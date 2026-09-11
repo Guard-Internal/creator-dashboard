@@ -1,7 +1,9 @@
 name: Refresh dashboard
 on:
   schedule:
-    - cron: "0 */4 * * *"
+    # first run of the day lands just after midnight EET — that snapshot anchors
+    # per-video daily gains to calendar days
+    - cron: "5 22,2,6,10,14,18 * * *"
   workflow_dispatch:
 
 permissions:

@@ -506,7 +506,7 @@ async function unlock(pw) {
   try { localStorage.setItem("gcpd_pw", pw); } catch (e) {}
   $("#gate").style.display = "none";
   $("#status").innerHTML = "data as of " + BUNDLE.generated_at +
-    ' · auto-refreshes every 4h · <a href="https://github.com/jurgismacys/guard-creator-performance-dashboard/actions/workflows/refresh.yml" target="_blank" rel="noopener">force refresh</a>';
+    ' · auto-refreshes every 4h · <a href="https://github.com/Guard-Internal/guard-internal.github.io/actions/workflows/refresh.yml" target="_blank" rel="noopener">force refresh</a>';
   fetchSummary("last7");
   return true;
 }

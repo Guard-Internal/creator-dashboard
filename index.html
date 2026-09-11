@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>Guard Creator Performance Dashboard</title>
+<style>
+:root {
+  --page: #e9e9e7; --card: #f8f8f7; --card2: #efefed;
+  --ink: #101010; --ink2: #4c4b48; --muted: #8a8880;
+  --grid: #dcdbd6; --ring: rgba(16,16,16,0.09);
+  --accent: #1c5cab; --line: #2a78d6;
+  --up: #0a7d0a; --up-bg: rgba(12,163,12,0.12);
+  --down: #c43434; --down-bg: rgba(208,59,59,0.10);
+  --fb: #2a78d6; --ig: #e87ba4; --tt: #1baf7a;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink);
+  font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; padding: 0 18px 70px; }
+.wrap { max-width: 1500px; margin: 0 auto; }
+header { padding: 26px 0 10px; display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+h1 { font-size: 21px; margin: 0; letter-spacing: -0.01em; }
+#status { font-size: 12px; color: var(--muted); }
+#status.busy::before { content: "●"; color: var(--accent); margin-right: 5px; animation: blink 1.2s infinite; }
+@keyframes blink { 50% { opacity: .25; } }
+.controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 6px 0 18px; }
+.chip { font: 600 12.5px system-ui, sans-serif; color: var(--ink2); background: var(--card);
+  border: 1px solid var(--ring); border-radius: 999px; padding: 6px 13px; cursor: pointer; }
+.chip:hover { border-color: var(--accent); color: var(--accent); }
+.chip.active { background: var(--ink); color: var(--card); border-color: var(--ink); }
+.custom { display: flex; gap: 6px; align-items: center; font-size: 12.5px; color: var(--muted);
+  background: var(--card); border: 1px solid var(--ring); border-radius: 999px; padding: 3px 10px; }
+.custom input[type=date] { border: none; background: transparent; font: 12.5px system-ui; color: var(--ink); }
+.custom input[type=number] { width: 44px; border: none; background: transparent; font: 12.5px system-ui; color: var(--ink); }
+.custom button { border: none; background: var(--ink); color: var(--card); border-radius: 999px;
+  padding: 3px 10px; font: 600 12px system-ui; cursor: pointer; }
+.meta { font-size: 12px; color: var(--muted); margin: -8px 0 14px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 14px; }
+.card { background: var(--card); border: 1px solid var(--ring); border-radius: 10px; padding: 14px 16px 12px; }
+.card h2 { font-size: 15.5px; margin: 0; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.rank { color: var(--muted); font-size: 12px; font-weight: 600; margin-right: 6px; }
+.big { font-size: 23px; font-weight: 700; letter-spacing: -0.01em; margin: 2px 0 0; font-variant-numeric: tabular-nums; }
+.nposts { font-size: 12.5px; font-weight: 500; color: var(--muted); margin-left: 8px; letter-spacing: 0;
+  cursor: pointer; border-bottom: 1px dotted var(--ring); }
+.nposts:hover { color: var(--ink2); }
+.postchart { margin: 6px 0 2px; }
+.postchart .pclabel { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--muted); margin: 2px 0 3px; }
+.pcwrap { position: relative; }
+.delta { font-size: 12px; font-weight: 700; border-radius: 4px; padding: 1.5px 7px; }
+.delta.up { color: var(--up); background: var(--up-bg); }
+.delta.down { color: var(--down); background: var(--down-bg); }
+.delta.flat { color: var(--muted); background: var(--card2); }
+.spark { display: block; margin: 8px 0 4px; }
+.toplist { margin: 8px 0 0; padding: 8px 0 0; border-top: 1px dashed var(--grid); }
+.toplist summary { font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--muted); cursor: pointer; user-select: none; }
+.tv { display: flex; gap: 8px; align-items: baseline; font-size: 12.5px; margin: 5px 0; }
+.tv .g { font-weight: 700; min-width: 52px; text-align: right; font-variant-numeric: tabular-nums; }
+.tv .cap { color: var(--ink2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.tv .cap a { color: inherit; text-decoration: none; }
+.tv .cap a:hover { color: var(--accent); }
+.pb { display: inline-block; font-size: 9.5px; font-weight: 700; padding: 1px 5px; border-radius: 3px; color: #fff; }
+.pb.instagram { background: var(--ig); } .pb.facebook { background: var(--fb); } .pb.tiktok { background: var(--tt); }
+.empty { color: var(--muted); font-size: 12.5px; }
+#chips { margin-bottom: 0; }
+#opts { margin: 8px 0 14px; }
+.grp { display: inline-flex; align-items: center; gap: 5px; padding-right: 12px; margin-right: 2px; border-right: 1px solid var(--ring); }
+.grp:last-of-type { border-right: none; }
+.glabel { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-right: 3px; }
+.fin { font: 500 12.5px system-ui, sans-serif; width: 88px; background: var(--card); border: 1px solid var(--ring);
+  border-radius: 999px; padding: 3.5px 11px; color: var(--ink); }
+.fin:focus { outline: 1.5px solid var(--ink2); }
+.fcount { font-size: 11.5px; color: var(--muted); }
+.termchip { font-size: 8.5px; font-weight: 800; letter-spacing: .07em; color: #fff; background: #a5a5a0;
+  border-radius: 3px; padding: 2px 6px; margin-left: 8px; vertical-align: 2px; }
+.card.terminated { opacity: .72; }
+.total-strip { display: flex; align-items: baseline; gap: 10px; margin: 12px 0 0; }
+.total-strip .tlabel { font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.total-strip .tbig { font-size: 32px; font-weight: 800; letter-spacing: -.5px; }
+.sub { display: flex; align-items: center; gap: 5px; margin-top: 7px; }
+.plink { font-size: 9.5px; font-weight: 700; padding: 2px 7px; border-radius: 3px; color: #fff; text-decoration: none; }
+.plink.instagram { background: var(--ig); } .plink.facebook { background: var(--fb); } .plink.tiktok { background: var(--tt); }
+.plink:hover { opacity: .75; }
+.pay { margin-left: auto; font-size: 11.5px; font-weight: 600; color: var(--ink2);
+  cursor: pointer; border-bottom: 1px dotted var(--ring); }
+.pay.none { color: var(--muted); font-weight: 500; cursor: default; border-bottom: none; }
+.pay.good { color: var(--up); }
+.pay.bad { color: var(--down); }
+.paypanel { margin: 7px 0 2px; padding: 7px 11px; background: var(--card2); border-radius: 7px; font-size: 12px; }
+.paypanel .pr { display: flex; justify-content: space-between; gap: 10px; margin: 2.5px 0; color: var(--ink2); }
+.paypanel .pr .val { font-variant-numeric: tabular-nums; font-weight: 600; }
+.paypanel .pr b { color: var(--ink); }
+.paypanel .muted { color: var(--muted); font-size: 11px; margin-top: 4px; }
+.tv.pad .g, .tv.pad .cap { color: var(--muted); }
+.tv.pad .g { font-weight: 600; }
+.tv .dt { font-size: 10.5px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sparkwrap { position: relative; }
+#tt { position: fixed; z-index: 10; background: var(--ink); color: var(--card); font: 600 11px system-ui, sans-serif;
+  padding: 3px 8px; border-radius: 5px; pointer-events: none; white-space: nowrap; display: none; }
+.hoverdot { position: absolute; width: 7px; height: 7px; border-radius: 50%; background: var(--line);
+  border: 1.5px solid var(--card); pointer-events: none; display: none; }
+.custom { display: none !important; }
+#gate { position: fixed; inset: 0; background: var(--page); display: none; align-items: center; justify-content: center; z-index: 50; }
+#gate .gbox { background: var(--card); border: 1px solid var(--ring); border-radius: 12px; padding: 28px 30px; width: 330px; }
+#gate h2 { margin: 0 0 4px; font-size: 17px; }
+#gate p { margin: 0 0 14px; color: var(--muted); font-size: 12.5px; }
+#gatePw { width: 100%; font: 14px system-ui, sans-serif; padding: 9px 12px; border: 1px solid var(--grid); border-radius: 8px; background: var(--page); color: var(--ink); }
+#gateGo { margin-top: 10px; width: 100%; font: 700 13.5px system-ui, sans-serif; background: var(--ink); color: var(--card); border: none; border-radius: 8px; padding: 10px; cursor: pointer; }
+#gateErr { color: var(--down); font-size: 12px; min-height: 16px; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div id="gate"><div class="gbox"><h2>Guard Creator Performance Dashboard</h2>
+<p>Enter the team password to unlock.</p>
+<input id="gatePw" type="password" placeholder="password" autocomplete="current-password">
+<div id="gateErr"></div><button id="gateGo">Unlock</button></div></div>
+<div class="wrap">
+<header>
+  <h1>Guard Creator Performance Dashboard</h1>
+  <span id="status">loading…</span>
+</header>
+<div class="controls" id="chips">
+  <button class="chip" data-days="1">Yesterday</button>
+  <button class="chip" data-day-offset="2">2 days ago</button>
+  <button class="chip" data-day-offset="3">3 days ago</button>
+  <button class="chip" data-days="3">Last 3 days</button>
+  <button class="chip active" data-days="7">Last 7 days</button>
+  <button class="chip" data-days="10">Last 10 days</button>
+  <button class="chip" data-days="14">Last 14 days</button>
+  <button class="chip" data-days="21">Last 21 days</button>
+  <button class="chip" data-days="30">Last 30 days</button>
+  <button class="chip" data-cal="last-month">Last month</button>
+  <span class="custom">last <input type="number" id="ndays" min="1" max="120" value="5"> days
+    <button id="goN">Go</button></span>
+  <span class="custom"><input type="date" id="d0"> → <input type="date" id="d1">
+    <button id="goRange">Go</button></span>
+</div>
+<div class="controls" id="opts">
+  <span class="grp"><span class="glabel">Counting</span>
+    <button class="chip active" data-mode="all" title="Views gained during the window by the whole catalog — old videos still pulling count too">All videos</button>
+    <button class="chip" data-mode="new" title="Views to date on videos POSTED within the window — the monthly report counts this way">Posted in period</button></span>
+  <span class="grp"><span class="glabel">Sort</span>
+    <button class="chip active" data-sort="total" id="sortViews">Views</button>
+    <button class="chip" data-sort="trend" id="sortTrend">Trend</button></span>
+  <span class="grp"><span class="glabel">Min commissions</span>
+    <button class="chip" data-comm="500">$500</button>
+    <button class="chip" data-comm="750">$750</button>
+    <button class="chip" data-comm="1000">$1,000</button>
+    <input class="fin" id="commMin" placeholder="custom $" inputmode="decimal"></span>
+  <span class="grp"><span class="glabel">Min views</span>
+    <input class="fin" id="viewsMin" placeholder="e.g. 1m / 500k"></span>
+  <span class="grp"><button class="chip" id="hideTerm" title="Terminated status synced from the Notion roster on every refresh">Hide terminated</button></span>
+  <button class="chip" id="exportCsv" title="Excel with 3 tabs: creator summary + pay breakdown, every window video with views & links, and posting-per-day matrix. Respects window, counting mode, filters and sorting.">⬇ Export Excel</button>
+  <button class="chip" id="clearF" hidden>✕ Clear filters</button>
+  <span class="fcount" id="fcount"></span>
+</div>
+<div class="total-strip" id="totals"></div>
+<div class="meta" id="meta"></div>
+<div class="grid" id="grid"></div>
+</div>
+<script src="xlsx.full.min.js"></script>
+<script>
+let BUNDLE = null;
+let curKey = "last7";
+const $ = s => document.querySelector(s);
+const fmt = v => v >= 1e6 ? (v/1e6).toFixed(v >= 1e7 ? 1 : 2) + "M" : v >= 1e3 ? Math.round(v/1e3) + "k" : "" + Math.round(v);
+let DATA = null;
+let RENDERED = [];
+let sortMode = "total";
+let countMode = "all";
+let commMin = 0, viewsMin = 0, hideTerm = false;
+
+function parseAmt(s) {
+  s = (s || "").trim().toLowerCase().replace(/[$,\s]/g, "");
+  if (!s) return 0;
+  let mult = 1;
+  if (s.endsWith("m")) { mult = 1e6; s = s.slice(0, -1); }
+  else if (s.endsWith("k")) { mult = 1e3; s = s.slice(0, -1); }
+  const n = parseFloat(s);
+  return isNaN(n) ? 0 : n * mult;
+}
+
+function isoDaysAgo(n) { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); }
+
+function fetchSummary(key) {
+  if (key) curKey = key;
+  if (!BUNDLE) return;
+  DATA = BUNDLE.windows[curKey + "_" + countMode] || null;
+  render();
+}
+
+function spark(days, w, h) {
+  if (!days.length) return "";
+  const max = Math.max(...days, 1);
+  const step = days.length > 1 ? w / (days.length - 1) : w;
+  const pts = days.map((v, i) => `${(i * step).toFixed(1)},${(h - 4 - (h - 10) * v / max).toFixed(1)}`);
+  const lastX = ((days.length - 1) * step).toFixed(1);
+  const lastY = (h - 4 - (h - 10) * days[days.length - 1] / max).toFixed(1);
+  const single = days.length === 1;
+  return `<svg class="spark" width="100%" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+    <polygon points="0,${h-3} ${pts.join(" ")} ${lastX},${h-3}" fill="var(--line)" opacity="0.10"/>
+    <polyline points="${pts.join(" ")}" fill="none" stroke="var(--line)" stroke-width="2" ${single ? 'stroke-linecap="round"' : ""}/>
+    <circle cx="${lastX}" cy="${lastY}" r="3" fill="var(--line)"/>
+  </svg>`;
+}
+
+function render() {
+  if (!DATA || !DATA.cards) { $("#grid").innerHTML = `<div class="empty">${DATA && DATA.error || "no data"}</div>`; return; }
+  let cards = [...DATA.cards];
+  if (hideTerm) cards = cards.filter(c => !c.term);
+  if (commMin > 0) cards = cards.filter(c => c.paid_detail && c.paid_detail.commission >= commMin);
+  if (viewsMin > 0) cards = cards.filter(c => c.total >= viewsMin);
+  if (sortMode === "trend") cards.sort((a, b) => {
+    const ta = a.prev > 1000 ? a.total / a.prev : (a.total > 1000 ? 9e9 : 0);
+    const tb = b.prev > 1000 ? b.total / b.prev : (b.total > 1000 ? 9e9 : 0);
+    return tb - ta;
+  });
+  RENDERED = cards;
+  const filtering = commMin > 0 || viewsMin > 0 || hideTerm;
+  $("#fcount").textContent = filtering ? `${cards.length} of ${DATA.cards.length} creators shown` : "";
+  $("#clearF").hidden = !filtering;
+  if (DATA.totals) {
+    const tp = DATA.totals.prev > 1000 ? (DATA.totals.total / DATA.totals.prev - 1) * 100 : null;
+    const tcls = tp === null ? "flat" : tp >= 5 ? "up" : tp <= -5 ? "down" : "flat";
+    const ttxt = tp === null ? "—" : (tp >= 0 ? "▲ +" : "▼ ") + Math.abs(tp).toFixed(0) + "%";
+    const cohort = DATA.mode === "new";
+    const tl = cohort
+      ? `<span class="tlabel" title="Views to date on videos POSTED within this window — the monthly report counts this way. Recent cohorts are still accruing, so they read low at first.">Views on videos posted · ${DATA.start} → ${DATA.end}</span>`
+      : `<span class="tlabel" title="Views gained during this window by the WHOLE catalog — old videos still pulling count too. Switch to 'Posted in period' for the monthly-report-style count.">Total views · ${DATA.start} → ${DATA.end}</span>`;
+    $("#totals").innerHTML = tl +
+      `<span class="tbig">${fmt(DATA.totals.total)}</span>` +
+      `<span class="delta ${tcls}" title="vs previous equal window (${fmt(DATA.totals.prev)})">${ttxt}</span>`;
+  }
+  $("#meta").textContent = `${DATA.start} → ${DATA.end} · data coverage ${DATA.coverage.first} → ${DATA.coverage.last}` +
+    ` · top-video gains: ${DATA.video_gains.exact ? "exact (" + DATA.video_gains.label + ")" : DATA.video_gains.label}` +
+    (DATA.last_refresh ? ` · last refresh ${DATA.last_refresh.replace("T", " ")}` : "");
+  const PB = {instagram: "IG", facebook: "FB", tiktok: "TT"};
+  $("#grid").innerHTML = cards.map((c, i) => {
+    const pct = c.prev > 1000 ? (c.total / c.prev - 1) * 100 : null;
+    const dcls = pct === null ? "flat" : pct >= 5 ? "up" : pct <= -5 ? "down" : "flat";
+    const dtxt = pct === null ? (c.total > 0 ? "new" : "—")
+      : (pct >= 0 ? "▲ +" : "▼ ") + Math.abs(pct).toFixed(0) + "%";
+    const links = ["instagram", "tiktok", "facebook"].flatMap(p => ((c.links || {})[p] || []).map(a =>
+      `<a class="plink ${p}" href="${a.url}" target="_blank" rel="noopener" title="@${a.u}">${PB[p]}</a>`)).join("");
+    const np = (c.posts && c.posts.videos) || 0;
+    const npDetail = (np ? `unique videos posted in selected period (cross-posts counted once) · platform posts: ` +
+      ["instagram", "facebook", "tiktok"].filter(p => c.posts[p]).map(p => `${PB[p]} ${c.posts[p]}`).join(" · ")
+      : "no posts in selected period") + " — click for posting history";
+    const nposts = `<span class="nposts" data-key="${c.key}" title="${npDetail}">· ${np} ${np === 1 ? "video" : "videos"}</span>`;
+    const pd = c.paid_detail;
+    const payCls = pd ? (pd.commission >= 500 ? " good" : " bad") : "";
+    const pay = c.paid != null
+      ? `<span class="pay${payCls}" title="click for earnings breakdown">${DATA.paid_label} pay $${Math.round(c.paid).toLocaleString()}</span>`
+      : `<span class="pay none">${DATA.paid_label} pay —</span>`;
+    const isCohort = DATA.mode === "new";
+    const top = c.top.length ? c.top.map(v => {
+      const cap = v.l ? `<a href="${v.l}" target="_blank" rel="noopener" title="posted ${v.u} · total ${fmt(v.v)}">${(v.t || "(no caption)").replace(/</g, "&lt;")}</a>`
+                      : (v.t || "(no caption)").replace(/</g, "&lt;");
+      const g = isCohort ? `<span class="g" title="views to date">${fmt(v.v)}</span>`
+        : v.pad ? `<span class="g" title="no measured gain in this window — total views shown">${fmt(v.v)}</span>`
+                : `<span class="g">+${fmt(v.g)}</span>`;
+      return `<div class="tv${v.pad ? " pad" : ""}">${g}<span class="pb ${v.p}">${PB[v.p] || v.p}</span>
+       <span class="cap">${cap}</span><span class="dt">${v.u ? v.u.slice(5) : ""}</span></div>`;
+    }).join("") : `<div class="empty" style="margin-top:5px;">${isCohort ? "nothing posted in this period" : "no videos tracked"}</div>`;
+    return `<div class="card${c.term ? " terminated" : ""}">
+      <h2><span><span class="rank">#${i + 1}</span>${c.name}${c.term ? '<span class="termchip">TERMINATED</span>' : ""}</span><span class="delta ${dcls}" title="vs previous equal window">${dtxt}</span></h2>
+      <div class="sub">${links}${pay}</div>
+      <div class="paypanel" hidden></div>
+      <div class="big">${fmt(c.total)}${nposts}</div>
+      <div class="sparkwrap" data-i="${i}">${spark(c.days, 300, 54)}</div>
+      <div class="postchart" hidden></div>
+      <details class="toplist"><summary>${isCohort ? "Top videos posted in period" : "Top videos · gainers first"}</summary>${top}</details>
+    </div>`;
+  }).join("");
+}
+
+// posting chart for the SELECTED period (click the "N videos" count)
+function postChart(days, dates) {
+  if (!days.length) return '<div class="empty">no data</div>';
+  const W = 300, H = 78, base = 60, top = 6;
+  const step = W / days.length;
+  const ymax = Math.max(...days.map(x => x.n), 1);
+  let bars = "", labels = "";
+  const every = Math.max(1, Math.ceil(days.length / 6));
+  days.forEach((x, i) => {
+    if (x.n) {
+      const h = (base - top) * x.n / ymax;
+      bars += `<rect x="${(i * step + 0.5).toFixed(1)}" y="${(base - h).toFixed(1)}" width="${Math.max(step - 1.5, 0.8).toFixed(1)}" height="${h.toFixed(1)}" rx="1" fill="var(--line)" opacity="0.55"/>`;
+    }
+    if (i % every === 0) {
+      labels += `<text x="${(i * step + 1).toFixed(1)}" y="${H - 4}" font-size="8.5" fill="var(--muted)">${dates[i].slice(5)}</text>`;
+    }
+  });
+  return `<div class="pclabel">Videos posted per day · this period (max ${ymax})</div>
+    <div class="pcwrap"><svg width="100%" viewBox="0 0 ${W} ${H}">
+      <line x1="0" x2="${W}" y1="${base + 0.5}" y2="${base + 0.5}" stroke="var(--ring)"/>
+      ${bars}${labels}</svg></div>`;
+}
+$("#grid").addEventListener("click", e => {
+  const np = e.target.closest(".nposts");
+  const pay = e.target.closest(".pay");
+  const card = e.target.closest(".card");
+  if (!card || (!np && !pay)) return;
+  const i = +card.querySelector(".sparkwrap").dataset.i;
+  const c = RENDERED[i];
+  if (np) {
+    const panel = card.querySelector(".postchart");
+    if (!panel.hidden) { panel.hidden = true; return; }
+    panel.dataset.i = i;
+    panel.hidden = false;
+    panel.innerHTML = postChart(c.posts_days || [], DATA.days || []);
+  } else if (pay && !pay.classList.contains("none")) {
+    const panel = card.querySelector(".paypanel");
+    if (!panel.hidden) { panel.hidden = true; return; }
+    const pd = c.paid_detail || {};
+    const f = x => "$" + Math.round(x || 0).toLocaleString();
+    panel.hidden = false;
+    panel.innerHTML =
+      `<div class="pr"><span>Retainer</span><span class="val">${f(pd.retainer)}</span></div>` +
+      `<div class="pr"><span>Commissions</span><span class="val" style="color:${(pd.commission || 0) >= 500 ? "var(--up)" : "var(--down)"}">${f(pd.commission)}</span></div>` +
+      `<div class="pr"><span>Ad-spend bonus</span><span class="val">${f(pd.ad_bonus)}</span></div>` +
+      `<div class="pr"><b>Total · ${DATA.paid_label}</b><span class="val"><b>${f(c.paid)}</b></span></div>` +
+      (pd.ad_spend ? `<div class="muted">we spent ${f(pd.ad_spend)} running their videos as Meta ads</div>` : "");
+  }
+});
+
+// spark hover: date + views for the day under the cursor
+const tt = document.createElement("div"); tt.id = "tt"; document.body.appendChild(tt);
+function hideHover() { tt.style.display = "none"; document.querySelectorAll(".hoverdot").forEach(d => d.style.display = "none"); }
+$("#grid").addEventListener("mousemove", e => {
+  const pcw = e.target.closest(".pcwrap");
+  if (pcw) {
+    const c = RENDERED[+pcw.closest(".postchart").dataset.i];
+    const pdays = c && c.posts_days;
+    if (!pdays || !pdays.length) return;
+    const rect = pcw.getBoundingClientRect();
+    const idx = Math.max(0, Math.min(pdays.length - 1, Math.floor((e.clientX - rect.left) / rect.width * pdays.length)));
+    const x = pdays[idx];
+    tt.textContent = `${DATA.days[idx]} · ${x.n} ${x.n === 1 ? "video" : "videos"}` +
+      (x.n ? ` (${["ig", "fb", "tt"].filter(p => x[p]).map(p => p.toUpperCase() + " " + x[p]).join(" · ")} posts)` : "");
+    tt.style.display = "block";
+    tt.style.left = (e.clientX + 12) + "px";
+    tt.style.top = (e.clientY - 30) + "px";
+    return;
+  }
+  const w = e.target.closest(".sparkwrap");
+  if (!w) { hideHover(); return; }
+  const c = RENDERED[+w.dataset.i];
+  if (!c || !c.days.length || !DATA.days) { hideHover(); return; }
+  const rect = w.getBoundingClientRect();
+  const n = c.days.length;
+  const idx = n > 1 ? Math.max(0, Math.min(n - 1, Math.round((e.clientX - rect.left) / rect.width * (n - 1)))) : 0;
+  const v = c.days[idx];
+  tt.textContent = `${DATA.days[idx]} · ${v >= 1000 ? fmt(v) : v} views` + (DATA.mode === "new" ? " from videos posted this day" : "");
+  tt.style.display = "block";
+  tt.style.left = (e.clientX + 12) + "px";
+  tt.style.top = (e.clientY - 30) + "px";
+  let dot = w.querySelector(".hoverdot");
+  if (!dot) { dot = document.createElement("div"); dot.className = "hoverdot"; w.appendChild(dot); }
+  const svg = w.querySelector("svg");
+  const sr = svg ? svg.getBoundingClientRect() : rect;
+  const max = Math.max(...c.days, 1);
+  const x = n > 1 ? idx / (n - 1) * rect.width : 0;
+  const y = (sr.top - rect.top) + (sr.height - 4 - (sr.height - 10) * v / max);
+  dot.style.display = "block";
+  dot.style.left = (x - 3.5) + "px";
+  dot.style.top = (y - 3.5) + "px";
+});
+$("#grid").addEventListener("mouseleave", hideHover);
+
+// counting-mode toggle
+document.querySelectorAll("#opts .chip[data-mode]").forEach(b => {
+  b.addEventListener("click", () => {
+    if (countMode === b.dataset.mode) return;
+    countMode = b.dataset.mode;
+    document.querySelectorAll("#opts .chip[data-mode]").forEach(x => x.classList.toggle("active", x === b));
+    fetchSummary();
+  });
+});
+
+// filters: min commissions (chips or custom) + min views
+document.querySelectorAll("#opts .chip[data-comm]").forEach(b => {
+  b.addEventListener("click", () => {
+    const v = +b.dataset.comm;
+    commMin = commMin === v ? 0 : v;
+    $("#commMin").value = "";
+    document.querySelectorAll("#opts .chip[data-comm]").forEach(x => x.classList.toggle("active", +x.dataset.comm === commMin));
+    render();
+  });
+});
+$("#commMin").addEventListener("input", () => {
+  commMin = parseAmt($("#commMin").value);
+  document.querySelectorAll("#opts .chip[data-comm]").forEach(x => x.classList.remove("active"));
+  render();
+});
+$("#viewsMin").addEventListener("input", () => { viewsMin = parseAmt($("#viewsMin").value); render(); });
+$("#hideTerm").addEventListener("click", () => {
+  hideTerm = !hideTerm;
+  $("#hideTerm").classList.toggle("active", hideTerm);
+  render();
+});
+$("#exportCsv").addEventListener("click", async () => {
+  if (!DATA || !RENDERED.length) return;
+  const btn = $("#exportCsv");
+  btn.textContent = "⬇ building…"; btn.disabled = true;
+  try {
+    const det = { days: DATA.days, creators: {} };
+    DATA.cards.forEach(c => {
+      det.creators[c.key] = {
+        videos: (c.top || []).map(v => ({ g: DATA.mode === "new" ? "" : (v.pad ? 0 : v.g), v: v.v, t: v.t, l: v.l, p: v.p, u: v.u })),
+        posts_days: (c.posts_days || []).map(x => x.n)
+      };
+    });
+    const urls = (c, p) => ((c.links || {})[p] || []).map(a => a.url).join(" ");
+    const payLbl = (DATA.paid_label || "last").toLowerCase();
+    const clean = s => (s || "").replace(/\s+/g, " ").trim();
+    const cohort = DATA.mode === "new";
+
+    // Sheet 1 — creators (respects current filters + sorting)
+    const crows = [["rank", "creator", "status",
+      cohort ? "views_on_videos_posted_in_period" : "views_gained_in_period",
+      "prev_period_views", "change_pct", "videos_posted", "posts_ig", "posts_fb", "posts_tt",
+      `pay_${payLbl}_total`, "retainer", "commissions", "ad_spend_bonus", "meta_ad_spend",
+      "instagram", "tiktok", "facebook"]];
+    RENDERED.forEach((c, i) => {
+      const pct = c.prev > 1000 ? +((c.total / c.prev - 1) * 100).toFixed(1) : "";
+      const pd = c.paid_detail || {};
+      const p = c.posts || {};
+      crows.push([i + 1, c.name, c.term ? "terminated" : "active", c.total, c.prev, pct,
+        p.videos || 0, p.instagram || 0, p.facebook || 0, p.tiktok || 0,
+        c.paid != null ? c.paid : "", pd.retainer ?? "", pd.commission ?? "", pd.ad_bonus ?? "", pd.ad_spend ?? "",
+        urls(c, "instagram"), urls(c, "tiktok"), urls(c, "facebook")]);
+    });
+
+    // Sheet 2 — every window video per (visible) creator, gainers first
+    const vrows = [["creator", cohort ? "views_to_date" : "views_gained_in_period",
+      "total_views", "platform", "posted", "caption", "link"]];
+    RENDERED.forEach(c => ((det.creators[c.key] || {}).videos || []).forEach(v =>
+      vrows.push([c.name, v.g === "" ? "" : v.g, v.v, v.p, v.u, clean(v.t), v.l || ""])));
+
+    // Sheet 3 — posting by day: creators × dates matrix
+    const prows = [["creator", ...det.days, "total"]];
+    RENDERED.forEach(c => {
+      const pd = (det.creators[c.key] || {}).posts_days || det.days.map(() => 0);
+      prows.push([c.name, ...pd, pd.reduce((a, b) => a + b, 0)]);
+    });
+
+    const wb = XLSX.utils.book_new();
+    const ws1 = XLSX.utils.aoa_to_sheet(crows);
+    ws1["!cols"] = [{wch:5},{wch:20},{wch:10},{wch:14},{wch:14},{wch:10},{wch:8},{wch:8},{wch:8},{wch:8},{wch:11},{wch:10},{wch:11},{wch:11},{wch:12},{wch:40},{wch:40},{wch:40}];
+    const ws2 = XLSX.utils.aoa_to_sheet(vrows);
+    ws2["!cols"] = [{wch:20},{wch:14},{wch:12},{wch:10},{wch:11},{wch:70},{wch:55}];
+    const ws3 = XLSX.utils.aoa_to_sheet(prows);
+    ws3["!cols"] = [{wch:20}, ...det.days.map(() => ({wch:11})), {wch:7}];
+    XLSX.utils.book_append_sheet(wb, ws1, "Creators");
+    XLSX.utils.book_append_sheet(wb, ws2, "Videos (top 10 each)");
+    XLSX.utils.book_append_sheet(wb, ws3, "Posting by day");
+    XLSX.writeFile(wb, `guard-creators_${DATA.start}_${DATA.end}_${cohort ? "posted-in-period" : "all-videos"}.xlsx`);
+  } catch (e) {
+    alert("Export failed: " + e.message);
+  } finally {
+    btn.textContent = "⬇ Export Excel"; btn.disabled = false;
+  }
+});
+$("#clearF").addEventListener("click", () => {
+  commMin = viewsMin = 0; hideTerm = false;
+  $("#commMin").value = ""; $("#viewsMin").value = "";
+  $("#hideTerm").classList.remove("active");
+  document.querySelectorAll("#opts .chip[data-comm]").forEach(x => x.classList.remove("active"));
+  render();
+});
+
+// window chips -> precomputed bundle keys
+const CHIP_KEY = b => b.dataset.days ? ({1: "yesterday", 3: "last3", 7: "last7", 10: "last10", 14: "last14", 21: "last21", 30: "last30"})[+b.dataset.days]
+  : b.dataset.dayOffset ? ({2: "d2", 3: "d3"})[+b.dataset.dayOffset]
+  : b.dataset.cal === "last-month" ? "lastmonth" : null;
+document.querySelectorAll("#chips .chip[data-days], #chips .chip[data-day-offset], #chips .chip[data-cal]").forEach(b => {
+  b.addEventListener("click", () => {
+    const key = CHIP_KEY(b);
+    if (!key) return;
+    document.querySelectorAll("#chips .chip").forEach(x => { if (!x.dataset.sort && !x.dataset.mode) x.classList.remove("active"); });
+    b.classList.add("active");
+    fetchSummary(key);
+  });
+});
+[$("#sortViews"), $("#sortTrend")].forEach(b => b.addEventListener("click", () => {
+  $("#sortViews").classList.toggle("active", b === $("#sortViews"));
+  $("#sortTrend").classList.toggle("active", b === $("#sortTrend"));
+  sortMode = b.dataset.sort; render();
+}));
+
+// password gate: bundle.enc is AES-256-GCM, key derived from the team password
+async function decryptBundle(pw) {
+  const buf = new Uint8Array(await (await fetch("bundle.enc?v=" + Date.now())).arrayBuffer());
+  const salt = buf.slice(0, 16), iv = buf.slice(16, 28), ct = buf.slice(28);
+  const km = await crypto.subtle.importKey("raw", new TextEncoder().encode(pw), "PBKDF2", false, ["deriveKey"]);
+  const key = await crypto.subtle.deriveKey({ name: "PBKDF2", salt, iterations: 250000, hash: "SHA-256" },
+    km, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+  const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ct);
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+async function unlock(pw) {
+  try { BUNDLE = await decryptBundle(pw); } catch (e) { return false; }
+  try { localStorage.setItem("gcpd_pw", pw); } catch (e) {}
+  $("#gate").style.display = "none";
+  $("#status").innerHTML = "data as of " + BUNDLE.generated_at +
+    ' · auto-refreshes every 4h · <a href="https://github.com/jurgismacys/guard-creator-performance-dashboard/actions/workflows/refresh.yml" target="_blank" rel="noopener">force refresh</a>';
+  fetchSummary("last7");
+  return true;
+}
+async function boot() {
+  let pw = null;
+  try { pw = localStorage.getItem("gcpd_pw"); } catch (e) {}
+  if (pw && await unlock(pw)) return;
+  $("#gate").style.display = "flex";
+  $("#gateGo").addEventListener("click", async () => {
+    $("#gateErr").textContent = "";
+    if (!(await unlock($("#gatePw").value.trim()))) $("#gateErr").textContent = "wrong password";
+  });
+  $("#gatePw").addEventListener("keydown", e => { if (e.key === "Enter") $("#gateGo").click(); });
+}
+boot();
+</script>boot();
+</script>
+</body>
+</html>

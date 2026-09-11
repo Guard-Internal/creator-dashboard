@@ -1,0 +1,76 @@
+name: Refresh dashboard
+on:
+  schedule:
+    - cron: "0 */4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Checkout engine (private)
+        uses: actions/checkout@v4
+        with:
+          repository: jurgismacys/guard-creator-performance-dashboard
+          ssh-key: ${{ secrets.CODE_DEPLOY_KEY }}
+          path: engine
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install deps
+        run: pip install --quiet requests flask cryptography
+
+      - name: Restore store
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          STORE_KEY: ${{ secrets.STORE_KEY }}
+        run: |
+          mkdir -p engine/data
+          if gh release download data --pattern store.json.enc --dir /tmp; then
+            openssl enc -d -aes-256-cbc -pbkdf2 -pass env:STORE_KEY -in /tmp/store.json.enc -out engine/data/store.json
+            echo "store restored"
+          else
+            echo "no store yet — starting fresh"
+          fi
+
+      - name: Pull Shortimize + Notion
+        env:
+          SHORTIMIZE_API_KEY: ${{ secrets.SHORTIMIZE_API_KEY }}
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_GUARD_CREATORS_DB: ${{ secrets.NOTION_GUARD_CREATORS_DB }}
+        working-directory: engine
+        run: python pull.py
+
+      - name: Save store
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          STORE_KEY: ${{ secrets.STORE_KEY }}
+        run: |
+          openssl enc -aes-256-cbc -pbkdf2 -pass env:STORE_KEY -in engine/data/store.json -out /tmp/store.json.enc
+          gh release view data >/dev/null 2>&1 || gh release create data --title "data" --notes "rolling encrypted store — do not delete" --latest=false
+          gh release upload data /tmp/store.json.enc --clobber
+
+      - name: Build site
+        env:
+          SITE_PASSWORD: ${{ secrets.SITE_PASSWORD }}
+        working-directory: engine
+        run: python build_site.py
+
+      - name: Publish
+        run: |
+          rsync -a engine/site/ ./
+          git config user.name "dashboard-refresh"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && echo "no site changes" || { git commit -q -m "refresh $(date -u +%FT%TZ)"; git push; }

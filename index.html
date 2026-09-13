@@ -101,7 +101,6 @@ h1 { font-size: 21px; margin: 0; letter-spacing: -0.01em; }
   padding: 3px 8px; border-radius: 5px; pointer-events: none; white-space: nowrap; display: none; }
 .hoverdot { position: absolute; width: 7px; height: 7px; border-radius: 50%; background: var(--line);
   border: 1.5px solid var(--card); pointer-events: none; display: none; }
-.custom { display: none !important; }
 #gate { position: fixed; inset: 0; background: var(--page); display: none; align-items: center; justify-content: center; z-index: 50; }
 #gate .gbox { background: var(--card); border: 1px solid var(--ring); border-radius: 12px; padding: 28px 30px; width: 330px; }
 #gate h2 { margin: 0 0 4px; font-size: 17px; }
@@ -163,7 +162,8 @@ h1 { font-size: 21px; margin: 0; letter-spacing: -0.01em; }
 <script src="xlsx.full.min.js"></script>
 <script>
 let BUNDLE = null;
-let curKey = "last7";
+let CORE = null;
+let curView = { chip: "last7" };
 const $ = s => document.querySelector(s);
 const fmt = v => v >= 1e6 ? (v/1e6).toFixed(v >= 1e7 ? 1 : 2) + "M" : v >= 1e3 ? Math.round(v/1e3) + "k" : "" + Math.round(v);
 let DATA = null;
@@ -185,10 +185,14 @@ function parseAmt(s) {
 function isoDaysAgo(n) { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); }
 
 function fetchSummary(key) {
-  if (key) curKey = key;
-  if (!BUNDLE) return;
-  DATA = BUNDLE.windows[curKey + "_" + countMode] || null;
+  if (key) curView = { chip: key };
+  if (!BUNDLE || !curView.chip) return;
+  DATA = BUNDLE.windows[curView.chip + "_" + countMode] || null;
   render();
+}
+function refreshView() {
+  if (curView.custom) showCustom(curView.custom[0], curView.custom[1]);
+  else fetchSummary();
 }
 
 function spark(days, w, h) {
@@ -376,7 +380,7 @@ document.querySelectorAll("#opts .chip[data-mode]").forEach(b => {
     if (countMode === b.dataset.mode) return;
     countMode = b.dataset.mode;
     document.querySelectorAll("#opts .chip[data-mode]").forEach(x => x.classList.toggle("active", x === b));
-    fetchSummary();
+    refreshView();
   });
 });
 
@@ -476,14 +480,28 @@ $("#clearF").addEventListener("click", () => {
 const CHIP_KEY = b => b.dataset.days ? ({1: "yesterday", 3: "last3", 7: "last7", 10: "last10", 14: "last14", 21: "last21", 30: "last30"})[+b.dataset.days]
   : b.dataset.dayOffset ? ({2: "d2", 3: "d3"})[+b.dataset.dayOffset]
   : b.dataset.cal === "last-month" ? "lastmonth" : null;
+function clearWindowActive() {
+  document.querySelectorAll("#chips .chip").forEach(x => { if (!x.dataset.sort && !x.dataset.mode) x.classList.remove("active"); });
+}
 document.querySelectorAll("#chips .chip[data-days], #chips .chip[data-day-offset], #chips .chip[data-cal]").forEach(b => {
   b.addEventListener("click", () => {
     const key = CHIP_KEY(b);
     if (!key) return;
-    document.querySelectorAll("#chips .chip").forEach(x => { if (!x.dataset.sort && !x.dataset.mode) x.classList.remove("active"); });
+    clearWindowActive();
     b.classList.add("active");
     fetchSummary(key);
   });
+});
+$("#goN").addEventListener("click", () => {
+  const n = Math.max(1, +$("#ndays").value || 7);
+  clearWindowActive();
+  showCustom(isoDaysAgo(n), isoDaysAgo(1));
+});
+$("#goRange").addEventListener("click", () => {
+  if ($("#d0").value && $("#d1").value) {
+    clearWindowActive();
+    showCustom($("#d0").value, $("#d1").value);
+  }
 });
 [$("#sortViews"), $("#sortTrend")].forEach(b => b.addEventListener("click", () => {
   $("#sortViews").classList.toggle("active", b === $("#sortViews"));
@@ -491,7 +509,150 @@ document.querySelectorAll("#chips .chip[data-days], #chips .chip[data-day-offset
   sortMode = b.dataset.sort; render();
 }));
 
-// password gate: bundle.enc is AES-256-GCM, key derived from the team password
+// ---- client-side analytics over CORE: any custom date window ----
+const PNAME = ["instagram", "facebook", "tiktok"];
+function isoAdd(d, n) { const x = new Date(d + "T00:00:00Z"); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); }
+function normTitle(t) { return (t || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim(); }
+function byCreator() {
+  if (!CORE._by) { CORE._by = CORE.creators.map(() => []); CORE.videos.forEach((v, i) => CORE._by[v.c].push(i)); }
+  return CORE._by;
+}
+function postsFor(key, winDays) {
+  const src = (CORE.posts || {})[key] || {};
+  let videos = 0, ig = 0, fb = 0, tt = 0;
+  const days = winDays.map(d => {
+    const e = src[d] || [0, 0, 0];
+    ig += e[0]; fb += e[1]; tt += e[2];
+    const n = Math.max(e[0], e[1], e[2]);
+    videos += n;
+    return { n, ig: e[0], fb: e[1], tt: e[2] };
+  });
+  return { days, agg: { videos, instagram: ig, facebook: fb, tiktok: tt, total: ig + fb + tt } };
+}
+function cardShell(cr, total, prev, daily, top, winDays) {
+  const pf = postsFor(cr.key, winDays);
+  return { key: cr.key, name: cr.name, total, prev, days: daily, top,
+           posts: pf.agg, posts_days: pf.days, term: cr.term,
+           links: cr.links || {}, paid: cr.paid, paid_detail: cr.paid_detail };
+}
+function topFill(list, ci) {
+  const seen = new Set(list.map(r => r[2]));
+  if (list.length < 10) {
+    const rec = byCreator()[ci].slice().sort((a, b) => (CORE.videos[b].u || "").localeCompare(CORE.videos[a].u || ""));
+    for (const i of rec) {
+      if (seen.has(i)) continue;
+      list.push([0, CORE.videos[i].v, i, true]);
+      if (list.length >= 10) break;
+    }
+  }
+  return list.map(([g, vv, i, pad]) => {
+    const v = CORE.videos[i];
+    const row = { g: Math.round(g), v: vv, t: v.t, l: v.l, p: PNAME[v.p], u: v.u };
+    if (pad) row.pad = true;
+    return row;
+  });
+}
+function cohortCompute(start, end) {
+  const C = CORE;
+  const groups = C.creators.map(() => new Map());
+  const singles = C.creators.map(() => []);
+  C.videos.forEach((v, i) => {
+    if (!v.u || v.u < start || v.u > end) return;
+    const nt = normTitle(v.t);
+    if (nt) { const m = groups[v.c]; if (!m.has(nt)) m.set(nt, []); m.get(nt).push(i); }
+    else singles[v.c].push(i);
+  });
+  return C.creators.map((cr, ci) => {
+    let total = 0; const byDay = {};
+    const addCluster = items => {
+      let ig = 0, fb = 0, tt = 0, d0 = null;
+      items.forEach(i => {
+        const v = C.videos[i];
+        if (v.p === 0) ig += v.v; else if (v.p === 1) fb += v.v; else tt += v.v;
+        if (d0 === null || v.u < d0) d0 = v.u;
+      });
+      total += Math.max(ig, fb) + tt;
+      byDay[d0] = (byDay[d0] || 0) + Math.max(ig, fb) + tt;
+    };
+    groups[ci].forEach(items => {
+      items.sort((a, b) => C.videos[a].u.localeCompare(C.videos[b].u));
+      let bucket = [items[0]];
+      for (let k = 1; k < items.length; k++) {
+        const gap = (new Date(C.videos[items[k]].u) - new Date(C.videos[bucket[0]].u)) / 864e5;
+        if (gap <= 3) bucket.push(items[k]); else { addCluster(bucket); bucket = [items[k]]; }
+      }
+      addCluster(bucket);
+    });
+    singles[ci].forEach(i => addCluster([i]));
+    return { total, byDay };
+  });
+}
+function buildCustom(start, end, mode) {
+  const C = CORE;
+  if (!C) return null;
+  if (start > end) { const t = start; start = end; end = t; }
+  const winDays = C.all_days.filter(d => d >= start && d <= end);
+  const n = Math.max(1, winDays.length);
+  const prevEnd = isoAdd(start, -1), prevStart = isoAdd(start, -n);
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const cards = [];
+  let gainsLabel, exact = false;
+
+  if (mode === "new") {
+    gainsLabel = "views to date on videos posted in the period";
+    const cur = cohortCompute(start, end);
+    const prv = cohortCompute(prevStart, prevEnd);
+    C.creators.forEach((cr, ci) => {
+      const daily = winDays.map(d => Math.round(cur[ci].byDay[d] || 0));
+      const top = byCreator()[ci].filter(i => { const u = C.videos[i].u; return u >= start && u <= end; })
+        .sort((a, b) => C.videos[b].v - C.videos[a].v).slice(0, 10)
+        .map(i => { const v = C.videos[i]; return { g: v.v, v: v.v, t: v.t, l: v.l, p: PNAME[v.p], u: v.u }; });
+      cards.push(cardShell(cr, Math.round(cur[ci].total), Math.round(prv[ci].total), daily, top, winDays));
+    });
+  } else {
+    const gainsBy = C.creators.map(() => []);
+    const exactOk = C.snap_first && start >= C.snap_first && end < C.snap_last;
+    if (exactOk) {
+      exact = true;
+      gainsLabel = start + " \u2192 " + isoAdd(end, 1) + " snapshots";
+      const per = new Map();
+      winDays.forEach(d => { const g = C.daygains[d]; if (g) for (const k in g) { const i = +k; per.set(i, (per.get(i) || 0) + g[k]); } });
+      per.forEach((g, i) => { if (g > 0) gainsBy[C.videos[i].c].push([g, C.videos[i].v, i]); });
+    } else {
+      const span = n <= 1 ? "i1" : n <= 7 ? "i7" : n <= 14 ? "i14" : "i30";
+      gainsLabel = "approximated from Shortimize " + ({ i1: "last 1 day", i7: "last 7 days", i14: "last 14 days", i30: "last 30 days" })[span] + " growth";
+      const recentEnd = end >= isoAdd(todayIso, -2);
+      C.videos.forEach((v, i) => {
+        if (!v.v) return;
+        if (recentEnd && v.u && v.u >= start) { gainsBy[v.c].push([v.v, v.v, i]); return; }
+        const inc = v[span];
+        if (inc && inc > 0) { const g = v.v * inc / (100 + inc); if (g > 0) gainsBy[v.c].push([g, v.v, i]); }
+      });
+    }
+    C.creators.forEach((cr, ci) => {
+      const s = C.series[cr.key] || {};
+      const daily = winDays.map(d => Math.round(s[d] || 0));
+      const total = daily.reduce((a, b) => a + b, 0);
+      let prev = 0;
+      for (const d in s) if (d >= prevStart && d <= prevEnd) prev += s[d];
+      const top = topFill(gainsBy[ci].sort((a, b) => b[0] - a[0]).slice(0, 10), ci);
+      cards.push(cardShell(cr, total, Math.round(prev), daily, top, winDays));
+    });
+  }
+
+  cards.sort((a, b) => b.total - a.total);
+  const totals = { total: cards.reduce((a, c) => a + c.total, 0), prev: cards.reduce((a, c) => a + c.prev, 0) };
+  return { days: winDays, start, end, cards, totals, mode, paid_label: C.paid_label,
+           coverage: { first: C.all_days[0], last: C.all_days[C.all_days.length - 1] },
+           video_gains: { exact, label: gainsLabel }, last_refresh: BUNDLE.generated_at };
+}
+function showCustom(start, end) {
+  curView = { custom: [start, end] };
+  DATA = buildCustom(start, end, countMode);
+  render();
+}
+
+// password gate: bundle.enc is zlib-compressed JSON inside AES-256-GCM
 async function decryptBundle(pw) {
   const buf = new Uint8Array(await (await fetch("bundle.enc?v=" + Date.now())).arrayBuffer());
   const salt = buf.slice(0, 16), iv = buf.slice(16, 28), ct = buf.slice(28);
@@ -499,14 +660,16 @@ async function decryptBundle(pw) {
   const key = await crypto.subtle.deriveKey({ name: "PBKDF2", salt, iterations: 250000, hash: "SHA-256" },
     km, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
   const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ct);
-  return JSON.parse(new TextDecoder().decode(pt));
+  const ds = new Response(new Blob([pt]).stream().pipeThrough(new DecompressionStream("deflate")));
+  return JSON.parse(await ds.text());
 }
 async function unlock(pw) {
   try { BUNDLE = await decryptBundle(pw); } catch (e) { return false; }
+  CORE = BUNDLE.core || null;
   try { localStorage.setItem("gcpd_pw", pw); } catch (e) {}
   $("#gate").style.display = "none";
   $("#status").innerHTML = "data as of " + BUNDLE.generated_at +
-    ' · auto-refreshes every 4h · <a href="https://github.com/Guard-Internal/creator-dashboard/actions/workflows/refresh.yml" target="_blank" rel="noopener">force refresh</a>';
+    ' \u00b7 auto-refreshes every 4h \u00b7 <a href="https://github.com/Guard-Internal/creator-dashboard/actions/workflows/refresh.yml" target="_blank" rel="noopener">force refresh</a>';
   fetchSummary("last7");
   return true;
 }

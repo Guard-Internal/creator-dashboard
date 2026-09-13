@@ -80,6 +80,11 @@ h1 { font-size: 21px; margin: 0; letter-spacing: -0.01em; }
 .total-strip .tlabel { font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
 .total-strip .tbig { font-size: 32px; font-weight: 800; letter-spacing: -.5px; }
 .covwarn { font-size: 12px; font-weight: 600; color: var(--down); max-width: 560px; }
+.p-ig { color: var(--ig); } .p-fb { color: var(--fb); } .p-tt { color: var(--tt); }
+.psplit { display: flex; gap: 8px; margin-top: 2px; font-size: 10.5px; font-weight: 700; }
+.psplit span { cursor: default; }
+.tsplit { display: inline-flex; gap: 9px; font-size: 12.5px; font-weight: 700; margin-left: 4px; }
+.tsplit span { cursor: default; }
 .sub { display: flex; align-items: center; gap: 5px; margin-top: 7px; }
 .plink { font-size: 9.5px; font-weight: 700; padding: 2px 7px; border-radius: 3px; color: #fff; text-decoration: none; }
 .plink.instagram { background: var(--ig); } .plink.facebook { background: var(--fb); } .plink.tiktok { background: var(--tt); }
@@ -236,9 +241,17 @@ function render() {
       : `<span class="tlabel" title="Views gained during this window by the WHOLE catalog — old videos still pulling count too. Switch to 'Posted in period' for the monthly-report-style count.">Total views · ${DATA.start} → ${DATA.end}</span>`;
     const preCov = !cohort && DATA.coverage && DATA.start < DATA.coverage.first;
     const goal = "";
+    let tsplit = "";
+    const tp2 = DATA.totals_plat;
+    if (tp2) {
+      const s2 = tp2[0] + tp2[1] + tp2[2];
+      if (s2 > 0) tsplit = `<span class="tsplit">` +
+        [["p-ig", "IG", tp2[0]], ["p-fb", "FB", tp2[1]], ["p-tt", "TT", tp2[2]]].filter(x => Math.round(x[2] / s2 * 100) >= 1)
+          .map(([cl, lb, v]) => `<span class="${cl}" title="${lb} ${fmt(v)} views">${lb} ${Math.round(v / s2 * 100)}%</span>`).join("") + `</span>`;
+    }
     $("#totals").innerHTML = tl +
       `<span class="tbig">${fmt(DATA.totals.total)}</span>` +
-      `<span class="delta ${tcls}" title="vs previous equal window (${fmt(DATA.totals.prev)})">${ttxt}</span>` + goal +
+      `<span class="delta ${tcls}" title="vs previous equal window (${fmt(DATA.totals.prev)})">${ttxt}</span>` + tsplit + goal +
       (preCov ? `<span class="covwarn">⚠ daily view tracking only exists from ${DATA.coverage.first} — for months before that, switch to “Posted in period” (counts by upload date)</span>` : "");
   }
   $("#meta").textContent = `${DATA.start} → ${DATA.end} · data coverage ${DATA.coverage.first} → ${DATA.coverage.last}` +
@@ -277,6 +290,10 @@ function render() {
       <div class="sub">${links}${pay}</div>
       <div class="paypanel" hidden></div>
       <div class="big">${fmt(c.total)}${nposts}</div>
+      ${(() => { const pl = c.plat || [0, 0, 0]; const ps = pl[0] + pl[1] + pl[2];
+        return ps > 0 ? `<div class="psplit">` +
+          [["p-ig", "IG", pl[0]], ["p-fb", "FB", pl[1]], ["p-tt", "TT", pl[2]]].filter(x => Math.round(x[2] / ps * 100) >= 1)
+            .map(([cl, lb, v]) => `<span class="${cl}" title="${lb} ${fmt(v)} views">${lb} ${Math.round(v / ps * 100)}%</span>`).join("") + `</div>` : ""; })()}
       <div class="sparkwrap" data-i="${i}">${spark(c.days, 300, 54)}</div>
       <div class="postchart" hidden></div>
       <details class="toplist"><summary>${isCohort ? "Top videos posted in period" : "Top videos · gainers first"}</summary>${top}</details>
@@ -533,10 +550,11 @@ function postsFor(key, winDays) {
   });
   return { days, agg: { videos, instagram: ig, facebook: fb, tiktok: tt, total: ig + fb + tt } };
 }
-function cardShell(cr, total, prev, daily, top, winDays) {
+function cardShell(cr, total, prev, daily, top, winDays, plat) {
   const pf = postsFor(cr.key, winDays);
   return { key: cr.key, name: cr.name, total, prev, days: daily, top,
            posts: pf.agg, posts_days: pf.days, term: cr.term,
+           plat: (plat || [0, 0, 0]).map(Math.round),
            links: cr.links || {}, paid: cr.paid, paid_detail: cr.paid_detail };
 }
 function topFill(list, ci) {
@@ -567,7 +585,7 @@ function cohortCompute(start, end) {
     else singles[v.c].push(i);
   });
   return C.creators.map((cr, ci) => {
-    let total = 0; const byDay = {};
+    let total = 0; const byDay = {}; const plat = [0, 0, 0];
     const addCluster = items => {
       let ig = 0, fb = 0, tt = 0, d0 = null;
       items.forEach(i => {
@@ -576,6 +594,7 @@ function cohortCompute(start, end) {
         if (d0 === null || v.u < d0) d0 = v.u;
       });
       total += Math.max(ig, fb) + tt;
+      plat[0] += Math.max(0, ig - fb); plat[1] += fb; plat[2] += tt;
       byDay[d0] = (byDay[d0] || 0) + Math.max(ig, fb) + tt;
     };
     groups[ci].forEach(items => {
@@ -588,7 +607,7 @@ function cohortCompute(start, end) {
       addCluster(bucket);
     });
     singles[ci].forEach(i => addCluster([i]));
-    return { total, byDay };
+    return { total, byDay, plat };
   });
 }
 function buildCustom(start, end, mode) {
@@ -611,7 +630,7 @@ function buildCustom(start, end, mode) {
       const top = byCreator()[ci].filter(i => { const u = C.videos[i].u; return u >= start && u <= end; })
         .sort((a, b) => C.videos[b].v - C.videos[a].v).slice(0, 10)
         .map(i => { const v = C.videos[i]; return { g: v.v, v: v.v, t: v.t, l: v.l, p: PNAME[v.p], u: v.u }; });
-      cards.push(cardShell(cr, Math.round(cur[ci].total), Math.round(prv[ci].total), daily, top, winDays));
+      cards.push(cardShell(cr, Math.round(cur[ci].total), Math.round(prv[ci].total), daily, top, winDays, cur[ci].plat));
     });
   } else {
     const gainsBy = C.creators.map(() => []);
@@ -640,13 +659,17 @@ function buildCustom(start, end, mode) {
       let prev = 0;
       for (const d in s) if (d >= prevStart && d <= prevEnd) prev += s[d];
       const top = topFill(gainsBy[ci].sort((a, b) => b[0] - a[0]).slice(0, 10), ci);
-      cards.push(cardShell(cr, total, Math.round(prev), daily, top, winDays));
+      const sp = (C.series_plat || {})[cr.key] || {};
+      const plat = [0, 0, 0];
+      winDays.forEach(d => { const t = sp[d]; if (t) { plat[0] += t[0]; plat[1] += t[1]; plat[2] += t[2]; } });
+      cards.push(cardShell(cr, total, Math.round(prev), daily, top, winDays, plat));
     });
   }
 
   cards.sort((a, b) => b.total - a.total);
   const totals = { total: cards.reduce((a, c) => a + c.total, 0), prev: cards.reduce((a, c) => a + c.prev, 0) };
-  return { days: winDays, start, end, cards, totals, mode, paid_label: C.paid_label,
+  const totals_plat = [0, 1, 2].map(i => cards.reduce((a, c) => a + (c.plat ? c.plat[i] : 0), 0));
+  return { days: winDays, start, end, cards, totals, totals_plat, mode, paid_label: C.paid_label,
            coverage: { first: C.all_days[0], last: C.all_days[C.all_days.length - 1] },
            video_gains: { exact, label: gainsLabel }, last_refresh: BUNDLE.generated_at };
 }

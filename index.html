@@ -79,6 +79,7 @@ h1 { font-size: 21px; margin: 0; letter-spacing: -0.01em; }
 .total-strip { display: flex; align-items: baseline; gap: 10px; margin: 12px 0 0; }
 .total-strip .tlabel { font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
 .total-strip .tbig { font-size: 32px; font-weight: 800; letter-spacing: -.5px; }
+.covwarn { font-size: 12px; font-weight: 600; color: var(--down); max-width: 560px; }
 .sub { display: flex; align-items: center; gap: 5px; margin-top: 7px; }
 .plink { font-size: 9.5px; font-weight: 700; padding: 2px 7px; border-radius: 3px; color: #fff; text-decoration: none; }
 .plink.instagram { background: var(--ig); } .plink.facebook { background: var(--fb); } .plink.tiktok { background: var(--tt); }
@@ -233,9 +234,11 @@ function render() {
     const tl = cohort
       ? `<span class="tlabel" title="Views to date on videos POSTED within this window — the monthly report counts this way. Recent cohorts are still accruing, so they read low at first.">Views on videos posted · ${DATA.start} → ${DATA.end}</span>`
       : `<span class="tlabel" title="Views gained during this window by the WHOLE catalog — old videos still pulling count too. Switch to 'Posted in period' for the monthly-report-style count.">Total views · ${DATA.start} → ${DATA.end}</span>`;
+    const preCov = !cohort && DATA.coverage && DATA.start < DATA.coverage.first;
     $("#totals").innerHTML = tl +
       `<span class="tbig">${fmt(DATA.totals.total)}</span>` +
-      `<span class="delta ${tcls}" title="vs previous equal window (${fmt(DATA.totals.prev)})">${ttxt}</span>`;
+      `<span class="delta ${tcls}" title="vs previous equal window (${fmt(DATA.totals.prev)})">${ttxt}</span>` +
+      (preCov ? `<span class="covwarn">⚠ daily view tracking only exists from ${DATA.coverage.first} — for months before that, switch to “Posted in period” (counts by upload date)</span>` : "");
   }
   $("#meta").textContent = `${DATA.start} → ${DATA.end} · data coverage ${DATA.coverage.first} → ${DATA.coverage.last}` +
     ` · top-video gains: ${DATA.video_gains.exact ? "exact (" + DATA.video_gains.label + ")" : DATA.video_gains.label}` +
@@ -684,6 +687,7 @@ async function boot() {
   });
   $("#gatePw").addEventListener("keydown", e => { if (e.key === "Enter") $("#gateGo").click(); });
 }
+
 boot();
 </script>boot();
 </script>

@@ -235,14 +235,7 @@ function render() {
       ? `<span class="tlabel" title="Views to date on videos POSTED within this window — the monthly report counts this way. Recent cohorts are still accruing, so they read low at first.">Views on videos posted · ${DATA.start} → ${DATA.end}</span>`
       : `<span class="tlabel" title="Views gained during this window by the WHOLE catalog — old videos still pulling count too. Switch to 'Posted in period' for the monthly-report-style count.">Total views · ${DATA.start} → ${DATA.end}</span>`;
     const preCov = !cohort && DATA.coverage && DATA.start < DATA.coverage.first;
-    const GOAL_MONTHLY = 400e6;
-    let goal = "";
-    if (!cohort && !preCov && DATA.days.length) {
-      const paceMo = DATA.totals.total / DATA.days.length * 30.4;
-      const pct = paceMo / GOAL_MONTHLY * 100;
-      const gcls = pct >= 100 ? "up" : pct >= 70 ? "flat" : "down";
-      goal = `<span class="delta ${gcls}" title="this window's daily pace projected to a month, against the 400M/mo goal (≈92M per 7 days)">pace ${fmt(paceMo)}/mo · ${pct.toFixed(0)}% of 400M goal</span>`;
-    }
+    const goal = "";
     $("#totals").innerHTML = tl +
       `<span class="tbig">${fmt(DATA.totals.total)}</span>` +
       `<span class="delta ${tcls}" title="vs previous equal window (${fmt(DATA.totals.prev)})">${ttxt}</span>` + goal +

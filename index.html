@@ -107,6 +107,12 @@ h1 { font-size: 21px; margin: 0; letter-spacing: -0.01em; }
   padding: 3px 8px; border-radius: 5px; pointer-events: none; white-space: nowrap; display: none; }
 .hoverdot { position: absolute; width: 7px; height: 7px; border-radius: 50%; background: var(--line);
   border: 1.5px solid var(--card); pointer-events: none; display: none; }
+nav.tabs { display: flex; gap: 6px; margin: 4px 0 16px; border-bottom: 1px solid var(--grid); }
+nav.tabs a { font: 600 13px system-ui, sans-serif; color: var(--ink2); text-decoration: none;
+  padding: 8px 14px; border: 1px solid transparent; border-bottom: none; border-radius: 8px 8px 0 0;
+  position: relative; top: 1px; }
+nav.tabs a:hover { color: var(--accent); }
+nav.tabs a.on { background: var(--card); border-color: var(--ring); border-bottom: 1px solid var(--card); color: var(--ink); }
 #gate { position: fixed; inset: 0; background: var(--page); display: none; align-items: center; justify-content: center; z-index: 50; }
 #gate .gbox { background: var(--card); border: 1px solid var(--ring); border-radius: 12px; padding: 28px 30px; width: 330px; }
 #gate h2 { margin: 0 0 4px; font-size: 17px; }
@@ -126,6 +132,10 @@ h1 { font-size: 21px; margin: 0; letter-spacing: -0.01em; }
   <h1>Guard Creator Performance Dashboard</h1>
   <span id="status">loading…</span>
 </header>
+<nav class="tabs">
+  <a href="#" class="on">Creator Performance</a>
+  <a href="partnership.html">Partnership Ads</a>
+</nav>
 <div class="controls" id="chips">
   <button class="chip" data-days="1">Yesterday</button>
   <button class="chip" data-day-offset="2">2 days ago</button>

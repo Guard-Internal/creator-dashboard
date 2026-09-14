@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>Guard Partnership Ads</title>
+<style>
+:root {
+  --page: #e9e9e7; --card: #f8f8f7; --card2: #efefed;
+  --ink: #101010; --ink2: #4c4b48; --muted: #8a8880;
+  --grid: #dcdbd6; --ring: rgba(16,16,16,0.09);
+  --accent: #1c5cab; --line: #2a78d6;
+  --up: #0a7d0a; --up-bg: rgba(12,163,12,0.12);
+  --down: #c43434; --down-bg: rgba(208,59,59,0.10);
+  --warn: #9a6408; --warn-bg: rgba(200,140,20,0.14);
+  --fb: #2a78d6; --ig: #e87ba4; --tt: #1baf7a;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink);
+  font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; padding: 0 18px 70px; }
+.wrap { max-width: 1500px; margin: 0 auto; }
+a { color: var(--accent); }
+header { padding: 26px 0 6px; display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+h1 { font-size: 21px; margin: 0; letter-spacing: -0.01em; }
+#status { font-size: 12px; color: var(--muted); }
+nav.tabs { display: flex; gap: 6px; margin: 10px 0 16px; border-bottom: 1px solid var(--grid); }
+nav.tabs a { font: 600 13px system-ui, sans-serif; color: var(--ink2); text-decoration: none;
+  padding: 8px 14px; border: 1px solid transparent; border-bottom: none; border-radius: 8px 8px 0 0;
+  position: relative; top: 1px; }
+nav.tabs a:hover { color: var(--accent); }
+nav.tabs a.on { background: var(--card); border-color: var(--ring); border-bottom: 1px solid var(--card); color: var(--ink); }
+
+.howto { background: var(--card); border: 1px solid var(--ring); border-radius: 10px; padding: 0 16px; margin: 0 0 16px; }
+.howto summary { cursor: pointer; font: 600 13px system-ui; padding: 12px 0; list-style: none; color: var(--ink2); }
+.howto summary::-webkit-details-marker { display: none; }
+.howto summary::before { content: "▸ "; color: var(--muted); }
+.howto[open] summary::before { content: "▾ "; }
+.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; padding: 4px 0 16px; }
+.step { border-left: 2px solid var(--grid); padding-left: 12px; }
+.step b { display: block; font-size: 12.5px; margin-bottom: 3px; }
+.step span { font-size: 12.5px; color: var(--ink2); }
+.step .num { color: var(--accent); font-weight: 700; }
+
+.controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 0 0 12px; }
+.chip { font: 600 12.5px system-ui, sans-serif; color: var(--ink2); background: var(--card);
+  border: 1px solid var(--ring); border-radius: 999px; padding: 6px 13px; cursor: pointer; }
+.chip:hover { border-color: var(--accent); color: var(--accent); }
+.chip.active { background: var(--ink); color: var(--card); border-color: var(--ink); }
+.fld { display: flex; gap: 6px; align-items: center; font-size: 12.5px; color: var(--muted);
+  background: var(--card); border: 1px solid var(--ring); border-radius: 999px; padding: 4px 12px; }
+.fld input, .fld select { border: none; background: transparent; font: 12.5px system-ui; color: var(--ink); outline: none; }
+.fld input[type=text] { width: 150px; }
+.fld input[type=number] { width: 70px; }
+label.tog { display: flex; gap: 6px; align-items: center; font: 600 12.5px system-ui; color: var(--ink2);
+  background: var(--card); border: 1px solid var(--ring); border-radius: 999px; padding: 6px 13px; cursor: pointer; }
+
+.bar { display: none; align-items: center; gap: 12px; background: var(--ink); color: var(--card);
+  border-radius: 10px; padding: 10px 16px; margin-bottom: 12px; font-size: 13px; }
+.bar.on { display: flex; }
+.bar button { font: 700 12.5px system-ui; border: none; border-radius: 999px; padding: 6px 14px; cursor: pointer;
+  background: var(--card); color: var(--ink); }
+.bar .ghost { background: transparent; color: var(--card); border: 1px solid rgba(255,255,255,.35); }
+
+table { width: 100%; border-collapse: collapse; background: var(--card);
+  border: 1px solid var(--ring); border-radius: 10px; overflow: hidden; }
+th { font: 600 11.5px system-ui; text-transform: uppercase; letter-spacing: .04em; color: var(--muted);
+  text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--grid); white-space: nowrap; cursor: pointer; user-select: none; }
+th.no { cursor: default; }
+th.sorted { color: var(--ink); }
+td { padding: 10px 12px; border-bottom: 1px solid var(--grid); vertical-align: top; font-size: 13px; }
+tr:last-child td { border-bottom: none; }
+tr.row:hover td { background: var(--card2); }
+td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+td.cap { color: var(--ink2); max-width: 420px; }
+.who { font-weight: 600; white-space: nowrap; }
+.sub { font-size: 11.5px; color: var(--muted); }
+.pl { display: inline-block; font: 700 10.5px system-ui; border-radius: 5px; padding: 2px 6px;
+  margin-right: 4px; text-decoration: none; color: #fff; }
+.pl.ig { background: var(--ig); } .pl.fb { background: var(--fb); } .pl.tt { background: var(--tt); }
+.badge { display: inline-block; font: 700 10.5px system-ui; border-radius: 999px; padding: 3px 9px; white-space: nowrap; }
+.b-none { background: var(--card2); color: var(--muted); }
+.b-req { background: var(--warn-bg); color: var(--warn); }
+.b-code { background: rgba(28,92,171,.12); color: var(--accent); }
+.b-live { background: var(--up-bg); color: var(--up); }
+.b-ran { background: var(--card2); color: var(--ink2); }
+.b-own { background: var(--card2); color: var(--ink2); }
+
+#panel { position: fixed; top: 0; right: 0; bottom: 0; width: min(560px, 100%); background: var(--card);
+  border-left: 1px solid var(--grid); box-shadow: -8px 0 30px rgba(0,0,0,.10); padding: 22px 24px 40px;
+  overflow-y: auto; transform: translateX(102%); transition: transform .18s ease; z-index: 40; }
+#panel.on { transform: none; }
+#panel h3 { margin: 0 0 2px; font-size: 16px; }
+#panel .close { position: absolute; top: 16px; right: 18px; border: none; background: transparent;
+  font-size: 20px; color: var(--muted); cursor: pointer; }
+.grp { margin-top: 20px; }
+.grp > label { display: block; font: 600 11.5px system-ui; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--muted); margin-bottom: 6px; }
+.grp input[type=text], .grp textarea { width: 100%; font: 13px system-ui; padding: 9px 11px;
+  border: 1px solid var(--grid); border-radius: 8px; background: var(--page); color: var(--ink); }
+.grp textarea { min-height: 150px; resize: vertical; font: 12.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.grp .hint { font-size: 11.5px; color: var(--muted); margin-top: 5px; }
+.grp .bad { color: var(--down); }
+.btn { font: 700 13px system-ui; border: none; border-radius: 8px; padding: 10px 16px; cursor: pointer;
+  background: var(--ink); color: var(--card); }
+.btn.sec { background: var(--card2); color: var(--ink); border: 1px solid var(--ring); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.row2 { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+.note { font-size: 12.5px; color: var(--ink2); background: var(--card2); border-radius: 8px; padding: 10px 12px; }
+.warnbox { background: var(--warn-bg); color: var(--warn); border-radius: 8px; padding: 10px 13px;
+  font-size: 12.5px; margin-bottom: 14px; }
+h2.sec { font-size: 15px; margin: 30px 0 10px; }
+#gate { position: fixed; inset: 0; background: var(--page); display: none; align-items: center; justify-content: center; z-index: 50; }
+#gate .gbox { background: var(--card); border: 1px solid var(--ring); border-radius: 12px; padding: 28px 30px; width: 330px; }
+#gate h2 { margin: 0 0 4px; font-size: 17px; }
+#gate p { margin: 0 0 14px; color: var(--muted); font-size: 12.5px; }
+#gatePw { width: 100%; font: 14px system-ui, sans-serif; padding: 9px 12px; border: 1px solid var(--grid); border-radius: 8px; background: var(--page); color: var(--ink); }
+#gateGo { margin-top: 10px; width: 100%; font: 700 13.5px system-ui, sans-serif; background: var(--ink); color: var(--card); border: none; border-radius: 8px; padding: 10px; cursor: pointer; }
+#gateErr { color: var(--down); font-size: 12px; min-height: 16px; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div id="gate"><div class="gbox"><h2>Guard Partnership Ads</h2>
+<p>Enter the team password to unlock.</p>
+<input id="gatePw" type="password" placeholder="password" autocomplete="current-password">
+<div id="gateErr"></div><button id="gateGo">Unlock</button></div></div>
+
+<div class="wrap">
+<header><h1>Partnership Ads</h1><div id="status">loading…</div></header>
+<nav class="tabs">
+  <a href="./">Creator Performance</a>
+  <a href="#" class="on">Partnership Ads</a>
+</nav>
+
+<details class="howto" id="howto" open>
+<summary>How a partnership ad gets made</summary>
+<div class="steps">
+  <div class="step"><b><span class="num">1.</span> Pick a winner</b><span>Sort the table by views. Anything already run as an ad is marked, so you are only picking from fresh material.</span></div>
+  <div class="step"><b><span class="num">2.</span> Ask the creator for the code</b><span>Select the videos, hit <i>Copy request</i>, paste it into that creator's Slack channel. The message lists each video with its own link so the codes come back paired.</span></div>
+  <div class="step"><b><span class="num">3.</span> Paste the code here</b><span>Instagram codes start <code>adcode-</code>, Facebook codes start <code>fbadcode-</code>. One code per platform post — a video on both needs both.</span></div>
+  <div class="step"><b><span class="num">4.</span> Launch, then tick it off</b><span>Use the code in Ads Manager as a partnership ad. Come back, add the ad name and mark it live.</span></div>
+</div>
+</details>
+
+<div id="cfgwarn"></div>
+
+<div class="controls" id="opts">
+  <span class="sub">Posted:</span>
+  <button class="chip" data-win="30">last 30d</button>
+  <button class="chip active" data-win="90">last 90d</button>
+  <button class="chip" data-win="180">last 6m</button>
+  <button class="chip" data-win="0">all time</button>
+  <span class="fld"><input type="text" id="q" placeholder="creator or caption"></span>
+  <span class="fld">min views <input type="number" id="minv" placeholder="0" step="100000"></span>
+  <label class="tog"><input type="checkbox" id="hideDone"> hide already run</label>
+  <label class="tog"><input type="checkbox" id="hideOwn" checked> hide brand account</label>
+  <span id="count" class="sub"></span>
+</div>
+
+<div class="bar" id="selbar">
+  <span id="seln">0 selected</span>
+  <button id="copyReq">Copy request message</button>
+  <button id="markReq" class="ghost">Mark as requested</button>
+  <button id="clearSel" class="ghost">Clear</button>
+</div>
+
+<table id="tbl"><thead><tr>
+  <th class="no"></th>
+  <th data-s="n">Creator</th>
+  <th data-s="t">Video</th>
+  <th data-s="d">Posted</th>
+  <th data-s="v" class="sorted">Views</th>
+  <th data-s="g30">Last 30d</th>
+  <th class="no">Where</th>
+  <th data-s="st">Status</th>
+</tr></thead><tbody></tbody></table>
+
+<h2 class="sec">Pipeline</h2>
+<div id="pipe"></div>
+</div>
+
+<div id="panel"><button class="close" id="panelX">×</button><div id="panelBody"></div></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const fmt = n => n >= 1e6 ? (n / 1e6).toFixed(n >= 1e7 ? 0 : 1) + "M"
+  : n >= 1e3 ? Math.round(n / 1e3) + "k" : String(n || 0);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+let BUNDLE = null, CAND = [], CFG = null;
+let PIPE = {};                       // id -> sheet row
+let sel = new Set();
+let sort = { k: "v", dir: -1 };
+let win = 90;
+
+/* ---------- pipeline API (Google Apps Script) ---------- */
+async function pipeLoad() {
+  if (!CFG || !CFG.endpoint) return;
+  try {
+    const r = await fetch(CFG.endpoint + "?token=" + encodeURIComponent(CFG.token));
+    const j = await r.json();
+    if (j.rows) { PIPE = {}; j.rows.forEach(x => PIPE[x.id] = x); }
+  } catch (e) { console.warn("pipeline load failed", e); }
+}
+async function pipeSave(rows) {
+  if (!CFG || !CFG.endpoint) { alert("Pipeline sheet is not connected yet."); return false; }
+  // text/plain keeps this a simple request — Apps Script cannot answer a CORS preflight
+  const r = await fetch(CFG.endpoint, {
+    method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({ token: CFG.token, rows })
+  });
+  const j = await r.json();
+  if (j.error) { alert("Save failed: " + j.error); return false; }
+  PIPE = {}; (j.rows || []).forEach(x => PIPE[x.id] = x);
+  render(); renderPipe();
+  return true;
+}
+
+/* ---------- status ---------- */
+function statusOf(c) {
+  const live = PIPE[c.id];
+  if (live && live.status) return live.status;
+  if (c.hist && c.hist.length) return "ran_before";
+  return "";
+}
+const BADGE = {
+  "": ['b-none', '—'],
+  requested: ['b-req', 'Requested'],
+  id_received: ['b-code', 'Code in'],
+  launched: ['b-live', 'Live'],
+  ran_before: ['b-ran', 'Ran before'],
+  rejected: ['b-none', 'Passed']
+};
+
+/* ---------- table ---------- */
+function visible() {
+  const q = $("#q").value.trim().toLowerCase();
+  const minv = parseFloat($("#minv").value) || 0;
+  const hideDone = $("#hideDone").checked, hideOwn = $("#hideOwn").checked;
+  const cut = win ? new Date(Date.now() - win * 864e5).toISOString().slice(0, 10) : "0000-01-01";
+  let rows = CAND.filter(c => {
+    if (c.d < cut) return false;
+    if (c.v < minv) return false;
+    if (hideOwn && c.own) return false;
+    const st = statusOf(c);
+    if (hideDone && (st === "launched" || st === "ran_before")) return false;
+    if (q && !(c.n.toLowerCase().includes(q) || c.t.toLowerCase().includes(q))) return false;
+    return true;
+  });
+  const k = sort.k;
+  rows.sort((a, b) => {
+    let x = k === "st" ? statusOf(a) : a[k], y = k === "st" ? statusOf(b) : b[k];
+    if (typeof x === "string") return sort.dir * x.localeCompare(y);
+    return sort.dir * ((x || 0) - (y || 0));
+  });
+  return rows;
+}
+function render() {
+  const rows = visible();
+  $("#count").textContent = rows.length + " of " + CAND.length + " creatives";
+  const tb = $("#tbl tbody");
+  tb.innerHTML = rows.map(c => {
+    const st = statusOf(c), b = BADGE[st] || BADGE[""];
+    const plats = ["ig", "fb", "tt"].map(p => {
+      const e = c.p[p]; if (!e) return "";
+      return `<a class="pl ${p}" href="${esc(e.url)}" target="_blank" rel="noopener" title="${fmt(e.v)} views">${p.toUpperCase()}</a>`;
+    }).join("");
+    const own = c.own ? ` <span class="badge b-own">brand account</span>` : "";
+    return `<tr class="row" data-id="${esc(c.id)}">
+      <td><input type="checkbox" class="pick" data-id="${esc(c.id)}" ${sel.has(c.id) ? "checked" : ""}${c.own ? " disabled" : ""}></td>
+      <td class="who">${esc(c.n)}</td>
+      <td class="cap">${esc(c.t)}${own}</td>
+      <td class="sub">${esc(c.d)}</td>
+      <td class="num"><b>${fmt(c.v)}</b></td>
+      <td class="num sub">${c.g30 ? "+" + fmt(c.g30) : "—"}</td>
+      <td>${plats}</td>
+      <td><span class="badge ${b[0]}">${b[1]}</span></td>
+    </tr>`;
+  }).join("") || `<tr><td colspan="8" class="sub" style="padding:22px">Nothing matches those filters.</td></tr>`;
+}
+
+/* ---------- request message ---------- */
+const IG_HELP = "https://help.instagram.com/797201308253238";
+function requestMessage(ids) {
+  const rows = ids.map(id => CAND.find(c => c.id === id)).filter(Boolean);
+  if (!rows.length) return "";
+  const who = rows[0].n.split(" ")[0];
+  const many = rows.length > 1;
+  let m = `Hi ${who}, we want to put ad spend behind ${many ? "some of your videos" : "one of your videos"}.\n\n`;
+  m += `Could you add Guard Blinds as a partner and send the partnership ad code for ${many ? "each video below" : "this video"}? `;
+  m += many ? `Please paste each code directly under its own link so they don't get mixed up.\n\n`
+            : `Please paste the code directly under the link.\n\n`;
+  rows.forEach((c, i) => {
+    m += `${many ? (i + 1) + ". " : ""}${c.t.length > 90 ? c.t.slice(0, 90).trimEnd() + "…" : c.t} — ${fmt(c.v)} views\n`;
+    ["ig", "fb"].forEach(k => {
+      const e = c.p[k]; if (!e || !e.url) return;
+      m += `${k === "ig" ? "Instagram" : "Facebook"}: ${e.url}\ncode: \n`;
+    });
+    m += `\n`;
+  });
+  m += `How to get the code: ${IG_HELP}\n`;
+  m += `If the option isn't showing on your Facebook page, tell me and we'll send you a partnership request from our side instead.\n\n`;
+  m += `You earn 10% of whatever we spend behind your videos.`;
+  return m;
+}
+
+/* ---------- side panel ---------- */
+let panelId = null;
+function openPanel(id) {
+  const c = CAND.find(x => x.id === id); if (!c) return;
+  panelId = id;
+  const live = PIPE[id] || {};
+  const st = statusOf(c);
+  const ranBefore = (c.hist || []).map(h =>
+    `<div class="note" style="margin-top:6px">Already run as an ad on ${esc(h.plat)}${h.ad ? ` — <b>${esc(h.ad)}</b>` : ""}${h.outcome ? ` · outcome: ${esc(h.outcome)}` : ""}</div>`).join("");
+  const links = ["ig", "fb", "tt"].map(k => {
+    const e = c.p[k]; if (!e) return "";
+    const nm = k === "ig" ? "Instagram" : k === "fb" ? "Facebook" : "TikTok";
+    return `<div style="margin-bottom:4px"><b>${nm}</b> · ${fmt(e.v)} views<br><a href="${esc(e.url)}" target="_blank" rel="noopener">${esc(e.url)}</a></div>`;
+  }).join("");
+  const hasIG = !!c.p.ig, hasFB = !!c.p.fb;
+
+  $("#panelBody").innerHTML = `
+    <h3>${esc(c.n)}</h3>
+    <div class="sub">${esc(c.d)} · ${fmt(c.v)} deduped views${c.g30 ? " · +" + fmt(c.g30) + " last 30d" : ""}</div>
+    <div class="note" style="margin-top:12px">${esc(c.t)}</div>
+    ${ranBefore}
+    ${c.own ? `<div class="warnbox" style="margin-top:12px">This is a Guard brand account post. No partnership code needed — you own the post, run it directly.</div>` : ""}
+    <div class="grp"><label>The posts</label>${links}</div>
+    ${c.p.tt ? `<div class="grp"><div class="note">TikTok is not part of the partnership-ad flow — that needs a Spark Ads authorisation code instead, which is a different ask.</div></div>` : ""}
+    <div class="grp"><label>Request message</label>
+      <textarea id="reqMsg">${esc(requestMessage([id]))}</textarea>
+      <div class="row2"><button class="btn sec" id="copyOne">Copy</button>
+      <button class="btn sec" id="reqOne">Mark as requested</button></div>
+    </div>
+    ${hasIG ? `<div class="grp"><label>Instagram partnership code</label>
+      <input type="text" id="igCode" placeholder="adcode-…" value="${esc(live.ig_code || '')}">
+      <div class="hint" id="igHint">Starts <code>adcode-</code>. Paste with or without the prefix.</div></div>` : ""}
+    ${hasFB ? `<div class="grp"><label>Facebook partnership code</label>
+      <input type="text" id="fbCode" placeholder="fbadcode-…" value="${esc(live.fb_code || '')}">
+      <div class="hint" id="fbHint">Starts <code>fbadcode-</code>.</div></div>` : ""}
+    <div class="grp"><label>Ad name</label>
+      <input type="text" id="adName" value="${esc(live.ad_name || '')}" placeholder="e.g. CRID0031 @${esc((c.p.ig || c.p.fb || {}).handle || '')} — or Batch #NN @handle - IG Viral Reels - LP: Listicle V4">
+    </div>
+    <div class="grp"><label>Notes</label><input type="text" id="notes" value="${esc(live.notes || '')}" placeholder="optional"></div>
+    <div class="row2">
+      <button class="btn" id="saveCode">Save code</button>
+      <button class="btn sec" id="markLive">${st === "launched" ? "✓ Live" : "Mark as launched"}</button>
+      <button class="btn sec" id="markPass">Pass</button>
+    </div>
+    <div class="hint" style="margin-top:10px">Saved to the pipeline sheet, visible to everyone with the dashboard.</div>
+  `;
+  $("#panel").classList.add("on");
+
+  const codeOf = el => (el && el.value || "").trim().replace(/^(fb)?adcode-/i, "");
+  $("#copyOne").onclick = () => copy($("#reqMsg").value, $("#copyOne"));
+  $("#reqOne").onclick = () => saveFor(c, { status: "requested" });
+  if ($("#saveCode")) $("#saveCode").onclick = () => {
+    const ig = codeOf($("#igCode")), fb = codeOf($("#fbCode"));
+    if (!ig && !fb) return alert("Paste at least one code.");
+    if (ig && ig.length < 40) return alert("That Instagram code looks too short.");
+    if (fb && fb.length < 40) return alert("That Facebook code looks too short.");
+    saveFor(c, { status: "id_received", partnership_id: ig || fb, ig_code: ig, fb_code: fb,
+                 ad_name: $("#adName").value.trim(), notes: $("#notes").value.trim() });
+  };
+  $("#markLive").onclick = () => saveFor(c, { status: "launched", ad_name: $("#adName").value.trim(),
+                 partnership_id: codeOf($("#igCode")) || codeOf($("#fbCode")), notes: $("#notes").value.trim() });
+  $("#markPass").onclick = () => saveFor(c, { status: "rejected", notes: $("#notes").value.trim() });
+}
+function rowFor(c, patch) {
+  const p = c.p.ig || c.p.fb || c.p.tt || {};
+  return Object.assign({
+    id: c.id, platform: c.p.ig ? "instagram" : c.p.fb ? "facebook" : "tiktok",
+    creator: c.c, creator_name: c.n, handle: p.handle || "",
+    post_url: (c.p.ig || c.p.fb || c.p.tt || {}).url || "",
+    post_date: c.d, views: c.v, caption: c.t, updated_by: "dashboard"
+  }, patch);
+}
+async function saveFor(c, patch) {
+  const ok = await pipeSave([rowFor(c, patch)]);
+  if (ok && panelId === c.id) openPanel(c.id);
+}
+function copy(text, btn) {
+  navigator.clipboard.writeText(text).then(() => {
+    const t = btn.textContent; btn.textContent = "Copied ✓";
+    setTimeout(() => btn.textContent = t, 1400);
+  });
+}
+
+/* ---------- pipeline section ---------- */
+function renderPipe() {
+  const groups = [["requested", "Waiting on the creator"], ["id_received", "Code in hand — ready to launch"], ["launched", "Live"]];
+  const rows = Object.values(PIPE);
+  if (!rows.length) { $("#pipe").innerHTML = `<div class="note">Nothing in the pipeline yet. Pick a video above and request a code.</div>`; return; }
+  $("#pipe").innerHTML = groups.map(([k, label]) => {
+    const g = rows.filter(r => r.status === k)
+      .sort((a, b) => (b.updated_at || "").localeCompare(a.updated_at || ""));
+    if (!g.length) return "";
+    return `<h3 style="font-size:13px;margin:16px 0 6px;color:var(--ink2)">${label} · ${g.length}</h3>
+      <table><tbody>${g.map(r => `<tr class="row" data-id="${esc(r.id)}">
+        <td class="who">${esc(r.creator_name || r.creator)}</td>
+        <td class="cap">${esc((r.caption || "").slice(0, 90))}</td>
+        <td class="num">${fmt(+r.views || 0)}</td>
+        <td class="sub">${esc(r.ad_name || "")}</td>
+        <td class="sub">${esc((r.updated_at || "").slice(0, 10))}</td>
+        <td><a href="${esc(r.post_url)}" target="_blank" rel="noopener">post ↗</a></td>
+      </tr>`).join("")}</tbody></table>`;
+  }).join("") || `<div class="note">Nothing active.</div>`;
+}
+
+/* ---------- wiring ---------- */
+function syncSel() {
+  $("#selbar").classList.toggle("on", sel.size > 0);
+  $("#seln").textContent = sel.size + " selected";
+}
+document.addEventListener("click", e => {
+  const pick = e.target.closest(".pick");
+  if (pick) {
+    const id = pick.dataset.id;
+    pick.checked ? sel.add(id) : sel.delete(id);
+    syncSel(); return;
+  }
+  const tr = e.target.closest("#tbl tr.row, #pipe tr.row");
+  if (tr && !e.target.closest("a")) openPanel(tr.dataset.id);
+});
+$("#panelX").onclick = () => { $("#panel").classList.remove("on"); panelId = null; };
+document.addEventListener("keydown", e => { if (e.key === "Escape") $("#panelX").click(); });
+$("#clearSel").onclick = () => { sel.clear(); syncSel(); render(); };
+$("#copyReq").onclick = () => {
+  const byCreator = {};
+  [...sel].forEach(id => { const c = CAND.find(x => x.id === id); if (c) (byCreator[c.c] ||= []).push(id); });
+  const parts = Object.values(byCreator).map(ids => requestMessage(ids));
+  copy(parts.join("\n\n———\n\n"), $("#copyReq"));
+};
+$("#markReq").onclick = async () => {
+  const rows = [...sel].map(id => CAND.find(c => c.id === id)).filter(Boolean).map(c => rowFor(c, { status: "requested" }));
+  if (rows.length && await pipeSave(rows)) { sel.clear(); syncSel(); }
+};
+document.querySelectorAll("#opts .chip[data-win]").forEach(b => b.onclick = () => {
+  win = +b.dataset.win;
+  document.querySelectorAll("#opts .chip[data-win]").forEach(x => x.classList.toggle("active", x === b));
+  render();
+});
+["q", "minv"].forEach(id => $("#" + id).addEventListener("input", render));
+["hideDone", "hideOwn"].forEach(id => $("#" + id).addEventListener("change", render));
+document.querySelectorAll("#tbl th[data-s]").forEach(th => th.onclick = () => {
+  const k = th.dataset.s;
+  sort = { k, dir: sort.k === k ? -sort.dir : (k === "n" || k === "t" || k === "st" ? 1 : -1) };
+  document.querySelectorAll("#tbl th").forEach(x => x.classList.remove("sorted"));
+  th.classList.add("sorted");
+  render();
+});
+
+/* ---------- gate ---------- */
+async function decryptBundle(pw) {
+  const buf = new Uint8Array(await (await fetch("bundle.enc?v=" + Date.now())).arrayBuffer());
+  const salt = buf.slice(0, 16), iv = buf.slice(16, 28), ct = buf.slice(28);
+  const km = await crypto.subtle.importKey("raw", new TextEncoder().encode(pw), "PBKDF2", false, ["deriveKey"]);
+  const key = await crypto.subtle.deriveKey({ name: "PBKDF2", salt, iterations: 250000, hash: "SHA-256" },
+    km, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+  const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ct);
+  const ds = new Response(new Blob([pt]).stream().pipeThrough(new DecompressionStream("deflate")));
+  return JSON.parse(await ds.text());
+}
+async function unlock(pw) {
+  try { BUNDLE = await decryptBundle(pw); } catch (e) { return false; }
+  try { localStorage.setItem("gcpd_pw", pw); } catch (e) {}
+  $("#gate").style.display = "none";
+  const P = BUNDLE.partners || {};
+  CAND = P.candidates || [];
+  CFG = P.pipeline || null;
+  $("#status").textContent = "data as of " + BUNDLE.generated_at + " · auto-refreshes every 4h";
+  if (!CFG || !CFG.endpoint) {
+    $("#cfgwarn").innerHTML = `<div class="warnbox"><b>The pipeline sheet is not connected yet.</b>
+      You can browse and copy request messages, but nothing can be saved until the Apps Script
+      web app is deployed and its URL is added to the dashboard config.</div>`;
+  }
+  await pipeLoad();
+  render(); renderPipe();
+  return true;
+}
+async function boot() {
+  let pw = null;
+  try { pw = localStorage.getItem("gcpd_pw"); } catch (e) {}
+  if (pw && await unlock(pw)) return;
+  $("#gate").style.display = "flex";
+  $("#gateGo").addEventListener("click", async () => {
+    $("#gateErr").textContent = "";
+    if (!(await unlock($("#gatePw").value.trim()))) $("#gateErr").textContent = "wrong password";
+  });
+  $("#gatePw").addEventListener("keydown", e => { if (e.key === "Enter") $("#gateGo").click(); });
+}
+boot();
+</script>
+</body>
+</html>

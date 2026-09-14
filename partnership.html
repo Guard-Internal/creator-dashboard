@@ -475,8 +475,10 @@ async function unlock(pw) {
       You can browse and copy request messages, but nothing can be saved until the Apps Script
       web app is deployed and its URL is added to the dashboard config.</div>`;
   }
-  await pipeLoad();
+  // paint candidates immediately — the pipeline fetch is a slow Apps Script
+  // round-trip and must never hold up the first render
   render(); renderPipe();
+  pipeLoad().then(() => { render(); renderPipe(); });
   return true;
 }
 async function boot() {

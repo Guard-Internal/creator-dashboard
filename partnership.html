@@ -315,7 +315,6 @@ function requestMessage(ids) {
   const setUp = isPartner(rows[0].c);
   let m;
   if (setUp) {
-    // They have done this before — Bobby's short form, no instructions.
     m = `Hi ${who}, ${many ? "here are some reels we want to run as partnership ads" : "here's a reel we want to run as a partnership ad"}.\n\n`;
     m += `Could you send ${many ? "the codes" : "the code"}? `;
     m += many ? `Paste each one under its own link so they don't get mixed up.\n\n`
@@ -323,13 +322,15 @@ function requestMessage(ids) {
   } else {
     m = `Hi ${who}, we want to put ad spend behind ${many ? "some of your videos" : "one of your videos"}.\n\n`;
     m += `Two things to set this up. First, connect your Facebook page and Instagram account here `;
-    m += `— it takes about a minute:\n${PARTNERS.leadsie || "https://app.leadsie.com/connect/guardblinds/manage"}\n\n`;
+    m += `(takes about a minute):\n${PARTNERS.leadsie || "https://app.leadsie.com/connect/guardblinds/manage"}\n\n`;
     m += `Then send us the partnership ad code for ${many ? "each video below" : "the video below"}. `;
     m += many ? `Paste each code under its own link so they don't get mixed up.\n\n`
               : `Paste it under the link.\n\n`;
   }
+  // Links only. The caption is noise in a Slack message and the creator knows
+  // their own video from the link.
   rows.forEach((c, i) => {
-    m += `${many ? (i + 1) + ". " : ""}${c.t.length > 90 ? c.t.slice(0, 90).trimEnd() + "…" : c.t} — ${fmt(c.v)} views\n`;
+    if (many) m += `Video ${i + 1}\n`;
     ["ig", "fb"].forEach(k => {
       const e = c.p[k]; if (!e || !e.url) return;
       m += `${k === "ig" ? "Instagram" : "Facebook"}: ${e.url}\ncode: \n`;
@@ -343,10 +344,8 @@ function requestMessage(ids) {
     m += `How to get the code: ${IG_HELP}\n`;
     m += `If the option isn't showing on your Facebook page, tell me and we'll send the request from our side instead.\n\n`;
     m += `You earn 10% of whatever we spend behind your videos.`;
-  } else {
-    m += `One thing — if there's a link in the caption, please take it out before generating the code.`;
   }
-  return m;
+  return m.trimEnd();
 }
 
 /* ---------- side panel ---------- */

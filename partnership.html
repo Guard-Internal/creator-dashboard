@@ -63,7 +63,8 @@ label.tog { display: flex; gap: 6px; align-items: center; font: 600 12.5px syste
 .bar .ghost { background: transparent; color: var(--card); border: 1px solid rgba(255,255,255,.35); }
 
 .twrap { overflow-x: auto; }
-table { width: 100%; min-width: 760px; border-collapse: collapse; background: var(--card);
+.twrap table { min-width: 760px; }
+table { width: 100%; border-collapse: collapse; background: var(--card);
   border: 1px solid var(--ring); border-radius: 10px; overflow: hidden; }
 th { font: 600 11.5px system-ui; text-transform: uppercase; letter-spacing: .04em; color: var(--muted);
   text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--grid); white-space: nowrap; cursor: pointer; user-select: none; }
@@ -127,7 +128,7 @@ h2.sec { font-size: 15px; margin: 30px 0 10px; }
 <div id="gateErr"></div><button id="gateGo">Unlock</button></div></div>
 
 <div class="wrap">
-<header><h1>Partnership Ads</h1><div id="status">loading…</div><div class="sub" id="build">build 2026-09-15 10:58</div></header>
+<header><h1>Partnership Ads</h1><div id="status">loading…</div><div class="sub" id="build">build 2026-09-15 11:07</div></header>
 <nav class="tabs">
   <a href="./">Creator Performance</a>
   <a href="#" class="on">Partnership Ads</a>
@@ -452,14 +453,14 @@ function renderPipe() {
       .sort((a, b) => (b.updated_at || "").localeCompare(a.updated_at || ""));
     if (!g.length) return "";
     return `<h3 style="font-size:13px;margin:16px 0 6px;color:var(--ink2)">${label} · ${g.length}</h3>
-      <table><tbody>${g.map(r => `<tr class="row" data-id="${esc(r.id)}">
+      <div class="twrap"><table><tbody>${g.map(r => `<tr class="row" data-id="${esc(r.id)}">
         <td class="who">${esc(r.creator_name || r.creator)}</td>
         <td class="cap">${esc((r.caption || "").slice(0, 90))}</td>
         <td class="num">${fmt(+r.views || 0)}</td>
         <td class="sub">${esc(r.ad_name || "")}</td>
         <td class="sub">${esc((r.updated_at || "").slice(0, 10))}</td>
         <td><a href="${esc(r.post_url)}" target="_blank" rel="noopener">post ↗</a></td>
-      </tr>`).join("")}</tbody></table>`;
+      </tr>`).join("")}</tbody></table></div>`;
   }).join("") || `<div class="note">Nothing active.</div>`;
 }
 

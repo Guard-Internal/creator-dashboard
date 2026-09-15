@@ -62,7 +62,8 @@ label.tog { display: flex; gap: 6px; align-items: center; font: 600 12.5px syste
   background: var(--card); color: var(--ink); }
 .bar .ghost { background: transparent; color: var(--card); border: 1px solid rgba(255,255,255,.35); }
 
-table { width: 100%; border-collapse: collapse; background: var(--card);
+.twrap { overflow-x: auto; }
+table { width: 100%; min-width: 760px; border-collapse: collapse; background: var(--card);
   border: 1px solid var(--ring); border-radius: 10px; overflow: hidden; }
 th { font: 600 11.5px system-ui; text-transform: uppercase; letter-spacing: .04em; color: var(--muted);
   text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--grid); white-space: nowrap; cursor: pointer; user-select: none; }
@@ -126,7 +127,7 @@ h2.sec { font-size: 15px; margin: 30px 0 10px; }
 <div id="gateErr"></div><button id="gateGo">Unlock</button></div></div>
 
 <div class="wrap">
-<header><h1>Partnership Ads</h1><div id="status">loading…</div><div class="sub" id="build">build 2026-09-15 10:50</div></header>
+<header><h1>Partnership Ads</h1><div id="status">loading…</div><div class="sub" id="build">build 2026-09-15 10:58</div></header>
 <nav class="tabs">
   <a href="./">Creator Performance</a>
   <a href="#" class="on">Partnership Ads</a>
@@ -163,7 +164,7 @@ h2.sec { font-size: 15px; margin: 30px 0 10px; }
   <span id="count" class="sub"></span>
 </div>
 
-<table id="tbl"><thead><tr>
+<div class="twrap"><table id="tbl"><thead><tr>
   <th data-s="n">Creator</th>
   <th data-s="t">Video</th>
   <th data-s="d">Posted</th>
@@ -171,7 +172,7 @@ h2.sec { font-size: 15px; margin: 30px 0 10px; }
   <th data-s="g30">Last 30d</th>
   <th class="no">Where</th>
   <th data-s="st">Status</th>
-</tr></thead><tbody></tbody></table>
+</tr></thead><tbody></tbody></table></div>
 
 <h2 class="sec">Pipeline</h2>
 <div id="pipe"></div>

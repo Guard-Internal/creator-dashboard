@@ -126,7 +126,7 @@ h2.sec { font-size: 15px; margin: 30px 0 10px; }
 <div id="gateErr"></div><button id="gateGo">Unlock</button></div></div>
 
 <div class="wrap">
-<header><h1>Partnership Ads</h1><div id="status">loading…</div><div class="sub" id="build">build 2026-09-15 10:41</div></header>
+<header><h1>Partnership Ads</h1><div id="status">loading…</div><div class="sub" id="build">build 2026-09-15 10:50</div></header>
 <nav class="tabs">
   <a href="./">Creator Performance</a>
   <a href="#" class="on">Partnership Ads</a>
@@ -135,7 +135,7 @@ h2.sec { font-size: 15px; margin: 30px 0 10px; }
 <details class="howto" id="howto" open>
 <summary>How a partnership ad gets made</summary>
 <div class="steps">
-  <div class="step"><b><span class="num">1.</span> Pick a winner</b><span>Sort the table by views. <b>Ran before</b> and <b>Asked before</b> flag videos we've already touched. These records only start Feb 2026, so treat a blank as "probably fresh", not a guarantee. Re-running an old winner is fine anyway.</span></div>
+  <div class="step"><b><span class="num">1.</span> Pick a winner</b><span>Sort the table by views, or narrow the window with the date filters. Videos we have already run or already asked about are flagged in the Status column. Those records only start Feb 2026, so read a blank as probably fresh rather than a guarantee.</span></div>
   <div class="step"><b><span class="num">2.</span> Ask the creator for the code</b><span>Click the video, hit <i>Copy</i>, paste into that creator's Slack channel. One video per message, with a blank <code>code:</code> line under each link.</span></div>
   <div class="step"><b><span class="num">3.</span> Paste the code here</b><span>Instagram codes start <code>adcode-</code>, Facebook codes start <code>fbadcode-</code>. One code per platform post — a video on both needs both.</span></div>
   <div class="step"><b><span class="num">4.</span> Launch, then tick it off</b><span>Use the code in Ads Manager as a partnership ad. Come back, add the ad name and mark it live.</span></div>
@@ -146,10 +146,16 @@ h2.sec { font-size: 15px; margin: 30px 0 10px; }
 
 <div class="controls" id="opts">
   <span class="sub">Posted:</span>
+  <button class="chip" data-win="7">last 7d</button>
+  <button class="chip" data-win="14">last 14d</button>
   <button class="chip" data-win="30">last 30d</button>
   <button class="chip active" data-win="90">last 90d</button>
   <button class="chip" data-win="180">last 6m</button>
   <button class="chip" data-win="0">all time</button>
+  <span class="custom">
+    <input type="date" id="dFrom"> to <input type="date" id="dTo">
+    <button id="dGo">apply</button>
+  </span>
   <span class="fld"><input type="text" id="q" placeholder="creator or caption"></span>
   <span class="fld">min views <input type="number" id="minv" placeholder="0" step="100000"></span>
   <label class="tog"><input type="checkbox" id="hideDone"> hide already run</label>
@@ -183,7 +189,8 @@ let BUNDLE = null, CAND = [], CFG = null, PARTNERS = { established: [], stalled:
 let ESTABLISHED = new Set();
 let PIPE = {};                       // id -> sheet row
 let sort = { k: "v", dir: -1 };
-let win = 90;
+let win = 90;        // days back from today; 0 = all time
+let range = null;    // {a, b} explicit ISO dates; overrides win when set
 
 /* ---------- pipeline API (Google Apps Script) ---------- */
 async function pipeLoad() {
@@ -232,9 +239,11 @@ function visible() {
   const q = $("#q").value.trim().toLowerCase();
   const minv = parseFloat($("#minv").value) || 0;
   const hideDone = $("#hideDone").checked, hideOwn = $("#hideOwn").checked;
-  const cut = win ? new Date(Date.now() - win * 864e5).toISOString().slice(0, 10) : "0000-01-01";
+  let lo = "0000-01-01", hi = "9999-12-31";
+  if (range) { lo = range.a; hi = range.b; }
+  else if (win) lo = new Date(Date.now() - win * 864e5).toISOString().slice(0, 10);
   let rows = CAND.filter(c => {
-    if (c.d < cut) return false;
+    if (c.d < lo || c.d > hi) return false;
     if (c.v < minv) return false;
     if (hideOwn && c.own) return false;
     const st = statusOf(c);
@@ -255,7 +264,11 @@ function render() {
   // spell out how many were already run — Bobby's history stops in May 2026, so
   // short windows legitimately show none, which otherwise looks like a broken import
   const ran = rows.filter(c => { const s = statusOf(c); return s === "ran_before" || s === "launched"; }).length;
+  const span = range ? (range.a === "0000-01-01" ? "up to " + range.b
+                      : range.b === "9999-12-31" ? "from " + range.a
+                      : range.a + " to " + range.b) : null;
   $("#count").textContent = rows.length + " of " + CAND.length + " creatives"
+    + (span ? " \u00b7 posted " + span : "")
     + (ran ? " \u00b7 " + ran + " touched before" : " \u00b7 none touched before in this window");
   const tb = $("#tbl tbody");
   tb.innerHTML = rows.map(c => {
@@ -458,9 +471,23 @@ $("#panelX").onclick = () => { $("#panel").classList.remove("on"); panelId = nul
 document.addEventListener("keydown", e => { if (e.key === "Escape") $("#panelX").click(); });
 document.querySelectorAll("#opts .chip[data-win]").forEach(b => b.onclick = () => {
   win = +b.dataset.win;
+  range = null;
+  $("#dFrom").value = ""; $("#dTo").value = "";
   document.querySelectorAll("#opts .chip[data-win]").forEach(x => x.classList.toggle("active", x === b));
   render();
 });
+$("#dGo").onclick = () => {
+  const a = $("#dFrom").value, b = $("#dTo").value;
+  if (!a && !b) { range = null; render(); return; }
+  // one-sided is fine: an open start or an open end
+  range = { a: a || "0000-01-01", b: b || "9999-12-31" };
+  if (range.a > range.b) { const t = range.a; range.a = range.b; range.b = t; }
+  document.querySelectorAll("#opts .chip[data-win]").forEach(x => x.classList.remove("active"));
+  render();
+};
+["dFrom", "dTo"].forEach(id => $("#" + id).addEventListener("keydown", e => {
+  if (e.key === "Enter") $("#dGo").click();
+}));
 ["q", "minv"].forEach(id => $("#" + id).addEventListener("input", render));
 ["hideDone", "hideOwn"].forEach(id => $("#" + id).addEventListener("change", render));
 document.querySelectorAll("#tbl th[data-s]").forEach(th => th.onclick = () => {

@@ -135,7 +135,7 @@ h2.sec { font-size: 15px; margin: 30px 0 10px; }
 <details class="howto" id="howto" open>
 <summary>How a partnership ad gets made</summary>
 <div class="steps">
-  <div class="step"><b><span class="num">1.</span> Pick a winner</b><span>Sort the table by views. Anything already run as an ad is marked, so you are only picking from fresh material.</span></div>
+  <div class="step"><b><span class="num">1.</span> Pick a winner</b><span>Sort the table by views. <b>Ran before</b> = we already ran it as an ad. <b>Asked before</b> = we requested a code and the outcome isn't recorded. Records only go back to Feb 2026 — an unmarked video may still have run under the old agency.</span></div>
   <div class="step"><b><span class="num">2.</span> Ask the creator for the code</b><span>Select the videos, hit <i>Copy request</i>, paste it into that creator's Slack channel. The message lists each video with its own link so the codes come back paired.</span></div>
   <div class="step"><b><span class="num">3.</span> Paste the code here</b><span>Instagram codes start <code>adcode-</code>, Facebook codes start <code>fbadcode-</code>. One code per platform post — a video on both needs both.</span></div>
   <div class="step"><b><span class="num">4.</span> Launch, then tick it off</b><span>Use the code in Ads Manager as a partnership ad. Come back, add the ad name and mark it live.</span></div>
@@ -221,7 +221,9 @@ async function pipeSave(rows) {
 function statusOf(c) {
   const live = PIPE[c.id];
   if (live && live.status) return live.status;
-  if (c.hist && c.hist.length) return "ran_before";
+  if (c.hist && c.hist.length) {
+    return c.hist.some(x => x.kind === "ran") ? "ran_before" : "asked_before";
+  }
   return "";
 }
 const BADGE = {
@@ -230,6 +232,7 @@ const BADGE = {
   id_received: ['b-code', 'Code in'],
   launched: ['b-live', 'Live'],
   ran_before: ['b-ran', 'Ran before'],
+  asked_before: ['b-req', 'Asked before'],
   rejected: ['b-none', 'Passed']
 };
 
@@ -262,7 +265,7 @@ function render() {
   // short windows legitimately show none, which otherwise looks like a broken import
   const ran = rows.filter(c => { const s = statusOf(c); return s === "ran_before" || s === "launched"; }).length;
   $("#count").textContent = rows.length + " of " + CAND.length + " creatives"
-    + (ran ? " \u00b7 " + ran + " already run as ads" : " \u00b7 none already run in this window");
+    + (ran ? " \u00b7 " + ran + " touched before" : " \u00b7 none touched before in this window");
   const tb = $("#tbl tbody");
   tb.innerHTML = rows.map(c => {
     const st = statusOf(c), b = BADGE[st] || BADGE[""];
@@ -353,8 +356,9 @@ function openPanel(id) {
   panelId = id;
   const live = PIPE[id] || {};
   const st = statusOf(c);
-  const ranBefore = (c.hist || []).map(h =>
-    `<div class="note" style="margin-top:6px">Already run as an ad on ${esc(h.plat)}${h.ad ? ` — <b>${esc(h.ad)}</b>` : ""}${h.outcome ? ` · outcome: ${esc(h.outcome)}` : ""}</div>`).join("");
+  const ranBefore = (c.hist || []).map(h => h.kind === "ran"
+    ? `<div class="note" style="margin-top:6px"><b>Already run as an ad</b> on ${esc(h.plat)}${h.ad ? ` — ${esc(h.ad)}` : ""}${h.outcome ? ` · outcome: ${esc(h.outcome)}` : ""}</div>`
+    : `<div class="note" style="margin-top:6px">We <b>asked ${esc(h.who || "the creator")} for a code</b> for this on ${esc(h.date || "an earlier date")}${h.src === "slack" ? " (from Slack)" : ""}. Whether it was delivered or launched isn't recorded.</div>`).join("");
   const links = ["ig", "fb", "tt"].map(k => {
     const e = c.p[k]; if (!e) return "";
     const nm = k === "ig" ? "Instagram" : k === "fb" ? "Facebook" : "TikTok";

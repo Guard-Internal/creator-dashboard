@@ -257,7 +257,11 @@ function visible() {
 }
 function render() {
   const rows = visible();
-  $("#count").textContent = rows.length + " of " + CAND.length + " creatives";
+  // spell out how many were already run — Bobby's history stops in May 2026, so
+  // short windows legitimately show none, which otherwise looks like a broken import
+  const ran = rows.filter(c => { const s = statusOf(c); return s === "ran_before" || s === "launched"; }).length;
+  $("#count").textContent = rows.length + " of " + CAND.length + " creatives"
+    + (ran ? " \u00b7 " + ran + " already run as ads" : " \u00b7 none already run in this window");
   const tb = $("#tbl tbody");
   tb.innerHTML = rows.map(c => {
     const st = statusOf(c), b = BADGE[st] || BADGE[""];

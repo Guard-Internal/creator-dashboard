@@ -126,7 +126,7 @@ h2.sec { font-size: 15px; margin: 30px 0 10px; }
 <div id="gateErr"></div><button id="gateGo">Unlock</button></div></div>
 
 <div class="wrap">
-<header><h1>Partnership Ads</h1><div id="status">loading…</div></header>
+<header><h1>Partnership Ads</h1><div id="status">loading…</div><div class="sub" id="build">build 2026-09-15 10:04</div></header>
 <nav class="tabs">
   <a href="./">Creator Performance</a>
   <a href="#" class="on">Partnership Ads</a>
@@ -136,7 +136,7 @@ h2.sec { font-size: 15px; margin: 30px 0 10px; }
 <summary>How a partnership ad gets made</summary>
 <div class="steps">
   <div class="step"><b><span class="num">1.</span> Pick a winner</b><span>Sort the table by views. <b>Ran before</b> = we already ran it as an ad. <b>Asked before</b> = we requested a code and the outcome isn't recorded. Records only go back to Feb 2026 — an unmarked video may still have run under the old agency.</span></div>
-  <div class="step"><b><span class="num">2.</span> Ask the creator for the code</b><span>Select the videos, hit <i>Copy request</i>, paste it into that creator's Slack channel. The message lists each video with its own link so the codes come back paired.</span></div>
+  <div class="step"><b><span class="num">2.</span> Ask the creator for the code</b><span>Click the video, hit <i>Copy</i>, paste into that creator's Slack channel. One video per message, with a blank <code>code:</code> line under each link.</span></div>
   <div class="step"><b><span class="num">3.</span> Paste the code here</b><span>Instagram codes start <code>adcode-</code>, Facebook codes start <code>fbadcode-</code>. One code per platform post — a video on both needs both.</span></div>
   <div class="step"><b><span class="num">4.</span> Launch, then tick it off</b><span>Use the code in Ads Manager as a partnership ad. Come back, add the ad name and mark it live.</span></div>
 </div>
@@ -157,15 +157,7 @@ h2.sec { font-size: 15px; margin: 30px 0 10px; }
   <span id="count" class="sub"></span>
 </div>
 
-<div class="bar" id="selbar">
-  <span id="seln">0 selected</span>
-  <button id="copyReq">Copy request message</button>
-  <button id="markReq" class="ghost">Mark as requested</button>
-  <button id="clearSel" class="ghost">Clear</button>
-</div>
-
 <table id="tbl"><thead><tr>
-  <th class="no"></th>
   <th data-s="n">Creator</th>
   <th data-s="t">Video</th>
   <th data-s="d">Posted</th>
@@ -190,7 +182,6 @@ const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&am
 let BUNDLE = null, CAND = [], CFG = null, PARTNERS = { established: [], stalled: [], leadsie: "" };
 let ESTABLISHED = new Set();
 let PIPE = {};                       // id -> sheet row
-let sel = new Set();
 let sort = { k: "v", dir: -1 };
 let win = 90;
 
@@ -275,7 +266,6 @@ function render() {
     }).join("");
     const own = c.own ? ` <span class="badge b-own">brand account</span>` : "";
     return `<tr class="row" data-id="${esc(c.id)}">
-      <td><input type="checkbox" class="pick" data-id="${esc(c.id)}" ${sel.has(c.id) ? "checked" : ""}${c.own ? " disabled" : ""}></td>
       <td class="who">${esc(c.n)}</td>
       <td class="cap">${esc(c.t)}${own}</td>
       <td class="sub">${esc(c.d)}</td>
@@ -284,7 +274,7 @@ function render() {
       <td>${plats}</td>
       <td><span class="badge ${b[0]}">${b[1]}</span></td>
     </tr>`;
-  }).join("") || `<tr><td colspan="8" class="sub" style="padding:22px">Nothing matches those filters.</td></tr>`;
+  }).join("") || `<tr><td colspan="7" class="sub" style="padding:22px">Nothing matches those filters.</td></tr>`;
 }
 
 /* ---------- partner state ---------- */
@@ -307,38 +297,28 @@ async function setPartner(creatorKey, connected) {
 
 /* ---------- request message ---------- */
 const IG_HELP = "https://help.instagram.com/797201308253238";
-function requestMessage(ids) {
-  const rows = ids.map(id => CAND.find(c => c.id === id)).filter(Boolean);
-  if (!rows.length) return "";
-  const who = rows[0].n.split(" ")[0];
-  const many = rows.length > 1;
-  const setUp = isPartner(rows[0].c);
+function requestMessage(id) {
+  const c = CAND.find(x => x.id === id);
+  if (!c) return "";
+  const who = c.n.split(" ")[0];
+  const setUp = isPartner(c.c);
   let m;
   if (setUp) {
-    m = `Hi ${who}, ${many ? "here are some reels we want to run as partnership ads" : "here's a reel we want to run as a partnership ad"}.\n\n`;
-    m += `Could you send ${many ? "the codes" : "the code"}? `;
-    m += many ? `Paste each one under its own link so they don't get mixed up.\n\n`
-              : `Paste it under the link.\n\n`;
+    m = `Hi ${who}, here's a reel we want to run as a partnership ad.\n\n`;
+    m += `Could you send the code? Paste it under the link.\n\n`;
   } else {
-    m = `Hi ${who}, we want to put ad spend behind ${many ? "some of your videos" : "one of your videos"}.\n\n`;
+    m = `Hi ${who}, we want to put ad spend behind one of your videos.\n\n`;
     m += `Two things to set this up. First, connect your Facebook page and Instagram account here `;
     m += `(takes about a minute):\n${PARTNERS.leadsie || "https://app.leadsie.com/connect/guardblinds/manage"}\n\n`;
-    m += `Then send us the partnership ad code for ${many ? "each video below" : "the video below"}. `;
-    m += many ? `Paste each code under its own link so they don't get mixed up.\n\n`
-              : `Paste it under the link.\n\n`;
+    m += `Then send us the partnership ad code for the video below. Paste it under the link.\n\n`;
   }
-  // Links only. The caption is noise in a Slack message and the creator knows
-  // their own video from the link.
-  rows.forEach((c, i) => {
-    if (many) m += `Video ${i + 1}\n`;
-    ["ig", "fb"].forEach(k => {
-      const e = c.p[k]; if (!e || !e.url) return;
-      m += `${k === "ig" ? "Instagram" : "Facebook"}: ${e.url}\ncode: \n`;
-    });
-    m += `\n`;
+  ["ig", "fb"].forEach(k => {
+    const e = c.p[k]; if (!e || !e.url) return;
+    m += `${k === "ig" ? "Instagram" : "Facebook"}: ${e.url}\ncode: \n`;
   });
-  if (rows.some(c => c.p.tt && !c.p.ig && !c.p.fb)) {
-    m += `(We can't run TikToks directly on Meta, so for those we need the Instagram version's code.)\n\n`;
+  m += `\n`;
+  if (c.p.tt && !c.p.ig && !c.p.fb) {
+    m += `(We can't run TikToks directly on Meta, so we need the Instagram version's code.)\n\n`;
   }
   if (!setUp) {
     m += `How to get the code: ${IG_HELP}\n`;
@@ -378,7 +358,7 @@ function openPanel(id) {
     <div class="grp"><label>The posts</label>${links}</div>
     ${c.p.tt ? `<div class="grp"><div class="note">TikTok can't run on Meta. Spark Ads need their own authorisation — Migle handles those. If this only went viral on TikTok, ask for the <b>Instagram</b> version's code and run that.</div></div>` : ""}
     <div class="grp"><label>Request message</label>
-      <textarea id="reqMsg">${esc(requestMessage([id]))}</textarea>
+      <textarea id="reqMsg">${esc(requestMessage(id))}</textarea>
       <div class="row2"><button class="btn sec" id="copyOne">Copy</button>
       <button class="btn sec" id="reqOne">Mark as requested</button></div>
     </div>
@@ -470,33 +450,12 @@ function renderPipe() {
 }
 
 /* ---------- wiring ---------- */
-function syncSel() {
-  $("#selbar").classList.toggle("on", sel.size > 0);
-  $("#seln").textContent = sel.size + " selected";
-}
 document.addEventListener("click", e => {
-  const pick = e.target.closest(".pick");
-  if (pick) {
-    const id = pick.dataset.id;
-    pick.checked ? sel.add(id) : sel.delete(id);
-    syncSel(); return;
-  }
   const tr = e.target.closest("#tbl tr.row, #pipe tr.row");
   if (tr && !e.target.closest("a")) openPanel(tr.dataset.id);
 });
 $("#panelX").onclick = () => { $("#panel").classList.remove("on"); panelId = null; };
 document.addEventListener("keydown", e => { if (e.key === "Escape") $("#panelX").click(); });
-$("#clearSel").onclick = () => { sel.clear(); syncSel(); render(); };
-$("#copyReq").onclick = () => {
-  const byCreator = {};
-  [...sel].forEach(id => { const c = CAND.find(x => x.id === id); if (c) (byCreator[c.c] ||= []).push(id); });
-  const parts = Object.values(byCreator).map(ids => requestMessage(ids));
-  copy(parts.join("\n\n———\n\n"), $("#copyReq"));
-};
-$("#markReq").onclick = async () => {
-  const rows = [...sel].map(id => CAND.find(c => c.id === id)).filter(Boolean).map(c => rowFor(c, { status: "requested" }));
-  if (rows.length && await pipeSave(rows)) { sel.clear(); syncSel(); }
-};
 document.querySelectorAll("#opts .chip[data-win]").forEach(b => b.onclick = () => {
   win = +b.dataset.win;
   document.querySelectorAll("#opts .chip[data-win]").forEach(x => x.classList.toggle("active", x === b));

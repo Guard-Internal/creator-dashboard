@@ -76,6 +76,7 @@ h1 { font-size: 21px; margin: 0; letter-spacing: -0.01em; }
 .termchip { font-size: 8.5px; font-weight: 800; letter-spacing: .07em; color: #fff; background: #a5a5a0;
   border-radius: 3px; padding: 2px 6px; margin-left: 8px; vertical-align: 2px; }
 .card.terminated { opacity: .72; }
+.card.onplan { background: #eef4fc; border-color: rgba(42, 120, 214, 0.22); }
 .total-strip { display: flex; align-items: baseline; gap: 10px; margin: 12px 0 0; }
 .total-strip .tlabel { font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
 .total-strip .tbig { font-size: 32px; font-weight: 800; letter-spacing: -.5px; }
@@ -295,7 +296,7 @@ function render() {
       return `<div class="tv${v.pad ? " pad" : ""}">${g}<span class="pb ${v.p}">${PB[v.p] || v.p}</span>
        <span class="cap">${cap}</span><span class="dt">${v.u ? v.u.slice(5) : ""}</span></div>`;
     }).join("") : `<div class="empty" style="margin-top:5px;">${isCohort ? "nothing posted in this period" : "no videos tracked"}</div>`;
-    return `<div class="card${c.term ? " terminated" : ""}">
+    return `<div class="card${c.term ? " terminated" : ""}${c.plan ? " onplan" : ""}"${c.plan ? ' title="on the Next-30 plan"' : ""}>
       <h2><span><span class="rank">#${i + 1}</span>${c.name}${c.term ? '<span class="termchip">TERMINATED</span>' : ""}</span><span class="delta ${dcls}" title="vs previous equal window">${dtxt}</span></h2>
       <div class="sub">${links}${pay}</div>
       <div class="paypanel" hidden></div>

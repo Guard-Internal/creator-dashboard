@@ -77,8 +77,11 @@ h1 { font-size: 21px; margin: 0; letter-spacing: -0.01em; }
   border-radius: 3px; padding: 2px 6px; margin-left: 8px; vertical-align: 2px; }
 .card.terminated { opacity: .72; }
 .card.onplan { background: #f3eefb; border-color: rgba(124, 77, 214, 0.25); }
+.card.ic { background: #fdf6e0; border-color: rgba(212, 160, 23, 0.75); box-shadow: 0 0 0 1px rgba(212, 160, 23, 0.4); }
+.card.onplan.ic { background: #f3eefb; }
 .legend { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--ink); font-weight: 600; }
 .legend .sw { width: 19px; height: 19px; border-radius: 5px; background: #f3eefb; border: 1.5px solid rgba(124, 77, 214, 0.6); }
+.legend .swic { background: #fdf6e0; border: 1.5px solid rgba(212, 160, 23, 0.8); }
 .total-strip { display: flex; align-items: baseline; gap: 10px; margin: 16px 0 0; }
 .total-strip .tlabel { font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
 .total-strip .tbig { font-size: 32px; font-weight: 800; letter-spacing: -.5px; }
@@ -174,6 +177,7 @@ nav.tabs a.on { background: var(--card); border-color: var(--ring); border-botto
   <button class="chip" id="clearF" hidden>✕ Clear filters</button>
   <span class="fcount" id="fcount"></span>
   <span class="legend"><span class="sw"></span> = on the Next-30 plan</span>
+  <span class="legend"><span class="sw swic"></span> = Inner Circle (10M+ views)</span>
 </div>
 <div class="total-strip" id="totals"></div>
 <div class="meta" id="meta"></div>
@@ -299,7 +303,8 @@ function render() {
       return `<div class="tv${v.pad ? " pad" : ""}">${g}<span class="pb ${v.p}">${PB[v.p] || v.p}</span>
        <span class="cap">${cap}</span><span class="dt">${v.u ? v.u.slice(5) : ""}</span></div>`;
     }).join("") : `<div class="empty" style="margin-top:5px;">${isCohort ? "nothing posted in this period" : "no videos tracked"}</div>`;
-    return `<div class="card${c.term ? " terminated" : ""}${c.plan ? " onplan" : ""}"${c.plan ? ' title="on the Next-30 plan"' : ""}>
+    const marks = [c.plan ? "on the Next-30 plan" : "", c.ic ? "Inner Circle (10M+ lifetime views)" : ""].filter(Boolean).join(" · ");
+    return `<div class="card${c.term ? " terminated" : ""}${c.plan ? " onplan" : ""}${c.ic ? " ic" : ""}"${marks ? ` title="${marks}"` : ""}>
       <h2><span><span class="rank">#${i + 1}</span>${c.name}${c.term ? '<span class="termchip">TERMINATED</span>' : ""}</span><span class="delta ${dcls}" title="vs previous equal window">${dtxt}</span></h2>
       <div class="sub">${links}${pay}</div>
       <div class="paypanel" hidden></div>
@@ -568,6 +573,7 @@ function cardShell(cr, total, prev, daily, top, winDays, plat) {
   const pf = postsFor(cr.key, winDays);
   return { key: cr.key, name: cr.name, total, prev, days: daily, top,
            posts: pf.agg, posts_days: pf.days, term: cr.term,
+           plan: cr.plan, ic: cr.ic,
            plat: (plat || [0, 0, 0]).map(Math.round),
            links: cr.links || {}, paid: cr.paid, paid_detail: cr.paid_detail };
 }

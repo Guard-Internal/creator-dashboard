@@ -84,6 +84,21 @@ h1 { font-size: 21px; margin: 0; letter-spacing: -0.01em; }
 .legend .sw { width: 19px; height: 19px; border-radius: 5px; background: #f3eefb; border: 1.5px solid rgba(124, 77, 214, 0.6); }
 .legend .swic { background: #fdf6e0; border: 1.5px solid rgba(212, 160, 23, 0.8); }
 .legend .swfresh { background: #e9f6ea; border: 1.5px solid rgba(34, 139, 68, 0.55); }
+#overview { margin: 16px 0 0; padding-bottom: 16px; border-bottom: 1px solid var(--grid); }
+.ovhead { font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); margin-bottom: 9px; }
+.ovhead .ovsub { text-transform: none; letter-spacing: 0; font-weight: 500; margin-left: 8px; }
+.ovgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(225px, 1fr)); gap: 10px; }
+.ovtile { background: var(--card); border: 1px solid var(--ring); border-radius: 9px; padding: 10px 13px 9px; }
+.ovtile .tl { font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.ovtile .big2 { font-size: 21px; font-weight: 800; letter-spacing: -.3px; margin-top: 3px; font-variant-numeric: tabular-nums; }
+.ovtile .big2 .sub2 { font-weight: 600; }
+.ovtile .sub2 { font-size: 11.5px; color: var(--ink2); margin-top: 1px; }
+.ovtile .ok { color: var(--up); } .ovtile .bad { color: var(--down); }
+.ovbars { display: flex; align-items: flex-end; gap: 3px; height: 34px; margin-top: 7px; }
+.ovbars .b { flex: 1; background: var(--line); opacity: .8; border-radius: 2px 2px 0 0; min-height: 2px; }
+.ovbars .b.cur { opacity: .35; }
+.ovbl { display: flex; gap: 3px; font-size: 8.5px; color: var(--muted); margin-top: 2px; }
+.ovbl span { flex: 1; text-align: center; overflow: hidden; white-space: nowrap; }
 .total-strip { display: flex; align-items: baseline; gap: 10px; margin: 16px 0 0; }
 .total-strip .tlabel { font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
 .total-strip .tbig { font-size: 32px; font-weight: 800; letter-spacing: -.5px; }
@@ -184,6 +199,10 @@ nav.tabs a.on { background: var(--card); border-color: var(--ring); border-botto
 </div>
 <div class="total-strip" id="totals"></div>
 <div class="meta" id="meta"></div>
+<div id="overview" hidden>
+  <div class="ovhead">Program overview <span class="ovsub" id="ovsub"></span></div>
+  <div class="ovgrid" id="ovgrid"></div>
+</div>
 <div class="grid" id="grid"></div>
 </div>
 <script src="xlsx.full.min.js"></script>
@@ -552,6 +571,60 @@ $("#goRange").addEventListener("click", () => {
   sortMode = b.dataset.sort; render();
 }));
 
+// ---- program overview: fixed windows, independent of the selected range ----
+async function loadOverview() {
+  if (BUNDLE && BUNDLE.overview) renderOverview(BUNDLE.overview);
+}
+function renderOverview(ov) {
+  if (!ov || !ov.monthly || !ov.monthly.length) return;
+  const el = $("#overview");
+  el.hidden = false;
+  const mlbl = m => new Date(m.m + "-15T00:00:00").toLocaleString("en", { month: "short" });
+  const M = ov.monthly, last = M[M.length - 1];
+  const mx = Math.max(...M.map(x => x.pace || x.v), 1);
+  const bars1 = M.map(x => {
+    const v = x.pace || x.v, part = x.m === "2026-06";
+    return `<div class="b${x.pace ? " cur" : ""}" style="height:${Math.max(5, v / mx * 100)}%" title="${mlbl(x)}${part ? " (partial — Jun 1-20 tracking gap)" : ""}: ${fmt(x.v)}${x.pace ? " so far, pace " + fmt(x.pace) : ""}"></div>`;
+  }).join("");
+  const lbl1 = M.map(x => `<span>${mlbl(x)}${x.m === "2026-06" ? "*" : ""}</span>`).join("");
+  const prevM = M.length > 1 ? M[M.length - 2] : null;
+  const paceDelta = prevM && last.pace ? Math.round((last.pace / prevM.v - 1) * 100) : null;
+  const u = ov.under500k, uNow = u[u.length - 1], uPrev = u[Math.max(0, u.length - 5)];
+  const umx = Math.max(...u.map(x => x.under), 1);
+  const bars2 = u.map(x => `<div class="b" style="height:${Math.max(5, x.under / umx * 100)}%" title="wk of ${x.d}: ${x.under} creators under 500k"></div>`).join("");
+  const p = ov.posting, pDelta = p.active14 - p.prev_active14;
+  const pay = ov.pay, ls = Math.round((pay.longtail_share || 0) * 1000) / 10;
+  const ltBad = (pay.longtail_share || 0) > ov.targets.longtail_max_share;
+  const ob = ov.onboards, obNow = (ob.length && ob[ob.length - 1].m === ov.today.slice(0, 7)) ? ob[ob.length - 1].n : 0;
+  const omx = Math.max(ov.targets.onboards_per_month, ...ob.map(x => x.n), 1);
+  const bars3 = ob.map(x => `<div class="b" style="height:${Math.max(5, x.n / omx * 100)}%" title="${mlbl(x)}: ${x.n} signed"></div>`).join("");
+  const lbl3 = ob.map(x => `<span>${mlbl(x)}</span>`).join("");
+  $("#ovgrid").innerHTML = `
+   <div class="ovtile"><div class="tl">Monthly views (deduped)</div>
+     <div class="big2">${last.pace ? fmt(last.pace) : fmt(last.v)}${last.pace ? '<span class="sub2"> pace</span>' : ""}${paceDelta != null ? ` <span class="${paceDelta >= 0 ? "ok" : "bad"}" style="font-size:12px;font-weight:700">${paceDelta >= 0 ? "▲" : "▼"}${Math.abs(paceDelta)}% vs ${mlbl(prevM)}</span>` : ""}</div>
+     <div class="ovbars">${bars1}</div><div class="ovbl">${lbl1}</div></div>
+   <div class="ovtile"><div class="tl">Creators under 500k · trailing 14d</div>
+     <div class="big2 ${uNow.under > uPrev.under ? "bad" : ""}">${uNow.under}<span class="sub2"> of ${ov.active}</span></div>
+     <div class="sub2">${uNow.under < uPrev.under ? "improving" : uNow.under > uPrev.under ? "worsening" : "flat"} vs 4 wks ago (${uPrev.under}) · lower is better</div>
+     <div class="ovbars">${bars2}</div></div>
+   <div class="ovtile"><div class="tl">Posting Guard content · last 14d</div>
+     <div class="big2">${p.active14}<span class="sub2"> of ${ov.active} posted</span></div>
+     <div class="sub2" title="${p.dark_names.join(", ")}">${p.dark14} dark ≥14d (${p.dark30} of them ≥30d) — hover for names</div>
+     <div class="sub2 ${pDelta >= 0 ? "ok" : "bad"}">${pDelta >= 0 ? "▲" : "▼"}${Math.abs(pDelta)} vs 4 wks ago</div></div>
+   <div class="ovtile"><div class="tl">${pay.label} payouts · long-tail share</div>
+     <div class="big2 ${ltBad ? "bad" : "ok"}">${ls}%</div>
+     <div class="sub2">of $${(pay.total / 1000).toFixed(1)}k went to creators under $500 commissions</div>
+     <div class="sub2">target ≤${Math.round(ov.targets.longtail_max_share * 100)}% · ${pay.zero_comm} creators at $0</div></div>
+   <div class="ovtile"><div class="tl">Producers · ${pay.label} commissions</div>
+     <div class="big2">${pay.over750}<span class="sub2"> at ≥$750 (≈$5k+ sales)</span></div>
+     <div class="sub2">${pay.over1k} at $1,000+ · ${pay.over300} at ≥$300 (≈$2k+ sales)</div>
+     <div class="sub2">conversion & time-to-$5k fill in as pay cycles accrue (${ov.pay_months.length} so far)</div></div>
+   <div class="ovtile"><div class="tl">Onboarding · signed per month</div>
+     <div class="big2">${obNow}<span class="sub2"> this month · target ${ov.targets.onboards_per_month}/mo</span></div>
+     <div class="ovbars">${bars3}</div><div class="ovbl">${lbl3}</div></div>`;
+  $("#ovsub").textContent = "fixed windows, unaffected by the range picker · " + ov.today;
+}
+
 // ---- client-side analytics over CORE: any custom date window ----
 const PNAME = ["instagram", "facebook", "tiktok"];
 function isoAdd(d, n) { const x = new Date(d + "T00:00:00Z"); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); }
@@ -721,6 +794,7 @@ async function unlock(pw) {
   $("#status").innerHTML = "data as of " + BUNDLE.generated_at +
     ' \u00b7 auto-refreshes every 4h \u00b7 <a href="https://github.com/Guard-Internal/creator-dashboard/actions/workflows/refresh.yml" target="_blank" rel="noopener">force refresh</a>';
   fetchSummary("last7");
+  if (BUNDLE.overview) renderOverview(BUNDLE.overview);
   return true;
 }
 async function boot() {

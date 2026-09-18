@@ -84,6 +84,21 @@ h1 { font-size: 21px; margin: 0; letter-spacing: -0.01em; }
 .legend .sw { width: 19px; height: 19px; border-radius: 5px; background: #f3eefb; border: 1.5px solid rgba(124, 77, 214, 0.6); }
 .legend .swic { background: #fdf6e0; border: 1.5px solid rgba(212, 160, 23, 0.8); }
 .legend .swfresh { background: #e9f6ea; border: 1.5px solid rgba(34, 139, 68, 0.55); }
+#tl { margin: 10px 0 0; }
+.tlhead { display: flex; align-items: center; gap: 10px; margin-bottom: 3px; }
+.tlhint { font-size: 11px; color: var(--muted); }
+.tlscroll { overflow-x: auto; padding-bottom: 5px; }
+.tlaxis { position: relative; height: 64px; }
+.tlday { position: absolute; bottom: 0; width: 5px; height: 12px; border-left: 1px solid var(--grid); cursor: pointer; }
+.tlday:hover { border-left-color: var(--accent); height: 17px; }
+.tlday.mstart { height: 20px; border-left-color: var(--muted); }
+.tlmon { position: absolute; bottom: 13px; font-size: 8.5px; font-weight: 700; color: var(--muted); letter-spacing: .04em; pointer-events: none; }
+.tlevstem { position: absolute; bottom: 12px; width: 0; border-left: 1.5px dashed rgba(42, 120, 214, 0.45); pointer-events: none; }
+.tlev { position: absolute; transform: translateX(-4px); font-size: 9.5px; font-weight: 700; color: var(--ink2);
+  background: var(--card); border: 1px solid var(--ring); border-radius: 4px; padding: 1px 6px; white-space: nowrap; cursor: pointer; z-index: 2; }
+.tlev:hover, .tlev.on { border-color: var(--accent); color: var(--accent); }
+.tlband { position: absolute; top: 0; bottom: 0; background: rgba(42, 120, 214, 0.10);
+  border-left: 1.5px solid var(--line); border-right: 1.5px solid var(--line); pointer-events: none; }
 #overview { margin: 16px 0 0; padding-bottom: 16px; border-bottom: 1px solid var(--grid); }
 .ovhead { font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); margin-bottom: 9px; }
 .ovhead .ovsub { text-transform: none; letter-spacing: 0; font-weight: 500; margin-left: 8px; }
@@ -175,6 +190,12 @@ nav.tabs a.on { background: var(--card); border-color: var(--ring); border-botto
   <span class="custom"><input type="date" id="d0"> → <input type="date" id="d1">
     <button id="goRange">Go</button></span>
 </div>
+<div id="tl">
+  <div class="tlhead"><span class="glabel">Timeline</span>
+    <span class="tlhint" id="tlhint">click a day or an event = that point → now · click a second point = the range between</span>
+  </div>
+  <div class="tlscroll" id="tlscroll"><div class="tlaxis" id="tlaxis"></div></div>
+</div>
 <div class="controls" id="opts">
   <span class="grp"><span class="glabel">Counting</span>
     <button class="chip active" data-mode="all" title="Views gained during the window by the whole catalog — old videos still pulling count too">All videos</button>
@@ -257,6 +278,7 @@ function spark(days, w, h) {
 }
 
 function render() {
+  if (DATA && DATA.coverage && !TL.built) buildTimeline();
   if (!DATA || !DATA.cards) { $("#grid").innerHTML = `<div class="empty">${DATA && DATA.error || "no data"}</div>`; return; }
   let cards = [...DATA.cards];
   if (hideTerm) cards = cards.filter(c => !c.term);
@@ -571,6 +593,74 @@ $("#goRange").addEventListener("click", () => {
   sortMode = b.dataset.sort; render();
 }));
 
+// ---- events timeline: pick a window by day or program event ----
+const TL = { events: [], built: false, anchor: null, first: null, days: 0 };
+function loadEvents() { TL.events = (BUNDLE && BUNDLE.events) || []; }
+function tlApply(s, e) {
+  document.querySelectorAll("#chips .chip").forEach(x => { if (x.dataset.days || x.dataset.dayOffset || x.dataset.cal) x.classList.remove("active"); });
+  showCustom(s, e);
+}
+function tlIdx(iso) { return Math.round((new Date(iso + "T00:00:00") - new Date(TL.first + "T00:00:00")) / 86400000); }
+function tlDate(i) { const d = new Date(TL.first + "T00:00:00"); d.setDate(d.getDate() + i); return d.toISOString().slice(0, 10); }
+function tlBand(s, e) {
+  const b = document.getElementById("tlband");
+  if (!b) return;
+  const PX = 5;
+  b.style.left = (tlIdx(s) * PX) + "px";
+  b.style.width = (Math.max(1, tlIdx(e) - tlIdx(s) + 1) * PX) + "px";
+  b.hidden = false;
+}
+function tlPick(iso) {
+  const yd = isoDaysAgo(1);
+  if (TL.anchor && TL.anchor !== iso) {
+    let s = TL.anchor < iso ? TL.anchor : iso, e = TL.anchor < iso ? iso : TL.anchor;
+    if (e > yd) e = yd;
+    TL.anchor = null;
+    document.querySelectorAll(".tlev.on").forEach(x => x.classList.remove("on"));
+    $("#tlhint").textContent = `showing ${s} → ${e} · click any point to start over`;
+    tlBand(s, e); tlApply(s, e);
+  } else {
+    TL.anchor = iso;
+    let s = iso, e = yd;
+    if (s > e) s = e;
+    document.querySelectorAll(".tlev.on").forEach(x => x.classList.remove("on"));
+    const flag = document.querySelector(`.tlev[data-iso="${iso}"]`);
+    if (flag) flag.classList.add("on");
+    $("#tlhint").textContent = `showing ${s} → now · click a second point to close the range instead`;
+    tlBand(s, e); tlApply(s, e);
+  }
+}
+function buildTimeline() {
+  if (!DATA || !DATA.coverage) return;
+  TL.first = DATA.coverage.first;
+  const PX = 5, MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  TL.days = tlIdx(new Date().toISOString().slice(0, 10)) + 1;
+  const ax = $("#tlaxis");
+  ax.style.width = (TL.days * PX + 140) + "px";
+  let h = "";
+  for (let i = 0; i < TL.days; i++) {
+    const iso = tlDate(i), m1 = iso.slice(8) === "01";
+    h += `<div class="tlday${m1 ? " mstart" : ""}" style="left:${i * PX}px" data-iso="${iso}" title="${iso}"></div>`;
+    if (m1 || (i === 0 && +iso.slice(8) <= 24)) h += `<div class="tlmon" style="left:${i * PX + 3}px">${MON[+iso.slice(5, 7) - 1]}</div>`;
+  }
+  TL.events.forEach((ev, k) => {
+    const i = tlIdx(ev.d);
+    if (i < 0 || i >= TL.days) return;
+    const lvl = k % 2;
+    h += `<div class="tlevstem" style="left:${i * PX}px;height:${lvl ? 36 : 20}px"></div>`;
+    h += `<div class="tlev" style="left:${i * PX}px;bottom:${lvl ? 48 : 32}px" data-iso="${ev.d}" title="${ev.d} — ${ev.t}">${ev.t.length > 24 ? ev.t.slice(0, 23) + "…" : ev.t}</div>`;
+  });
+  h += `<div class="tlband" id="tlband" hidden></div>`;
+  ax.innerHTML = h;
+  ax.onclick = e => {
+    const el = e.target.closest("[data-iso]");
+    if (el) tlPick(el.dataset.iso);
+  };
+  TL.built = true;
+  $("#tlscroll").scrollLeft = 999999;
+}
+
+
 // ---- program overview: fixed windows, independent of the selected range ----
 async function loadOverview() {
   if (BUNDLE && BUNDLE.overview) renderOverview(BUNDLE.overview);
@@ -793,6 +883,7 @@ async function unlock(pw) {
   $("#gate").style.display = "none";
   $("#status").innerHTML = "data as of " + BUNDLE.generated_at +
     ' \u00b7 auto-refreshes every 4h \u00b7 <a href="https://github.com/Guard-Internal/creator-dashboard/actions/workflows/refresh.yml" target="_blank" rel="noopener">force refresh</a>';
+  if (typeof loadEvents === "function") loadEvents();
   fetchSummary("last7");
   if (BUNDLE.overview) renderOverview(BUNDLE.overview);
   return true;

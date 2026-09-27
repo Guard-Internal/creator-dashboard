@@ -175,6 +175,7 @@ nav.tabs a.on { background: var(--card); border-color: var(--ring); border-botto
   <button class="chip" data-days="21">Last 21 days</button>
   <button class="chip" data-days="30">Last 30 days</button>
   <button class="chip" data-cal="last-month">Last month</button>
+  <button class="chip" id="todayTgl" title="also count today's views so far (partial day, updates each refresh)">+ today</button>
   <span class="custom">last <input type="number" id="ndays" min="1" max="120" value="5"> days
     <button id="goN">Go</button></span>
   <span class="custom"><input type="date" id="d0"> → <input type="date" id="d1">
@@ -239,6 +240,9 @@ function parseAmt(s) {
 }
 
 function isoDaysAgo(n) { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); }
+let incToday = false;
+try { incToday = localStorage.getItem("incToday") === "1"; } catch (e) {}
+const incEnd = () => isoDaysAgo(incToday ? 0 : 1);
 
 function fetchSummary(key) {
   if (key) curView = { chip: key };
@@ -304,7 +308,7 @@ function render() {
       `<span class="delta ${tcls}" title="vs previous equal window (${fmt(DATA.totals.prev)})">${ttxt}</span>` + tsplit + goal +
       (preCov ? `<span class="covwarn">⚠ daily view tracking only exists from ${DATA.coverage.first} — for months before that, switch to “Posted in period” (counts by upload date)</span>` : "");
   }
-  $("#meta").textContent = `${DATA.start} → ${DATA.end} · data coverage ${DATA.coverage.first} → ${DATA.coverage.last}` +
+  $("#meta").textContent = `${DATA.start} → ${DATA.end}${DATA.end >= isoDaysAgo(0) ? " (today = partial day)" : ""} · data coverage ${DATA.coverage.first} → ${DATA.coverage.last}` +
     ` · top-video gains: ${DATA.video_gains.exact ? "exact (" + DATA.video_gains.label + ")" : DATA.video_gains.label}` +
     (DATA.last_refresh ? ` · last refresh ${DATA.last_refresh.replace("T", " ")}` : "");
   const PB = {instagram: "IG", facebook: "FB", tiktok: "TT"};
@@ -557,6 +561,12 @@ function clearWindowActive() {
 }
 document.querySelectorAll("#chips .chip[data-days], #chips .chip[data-day-offset], #chips .chip[data-cal]").forEach(b => {
   b.addEventListener("click", () => {
+    if (incToday && b.dataset.days) {
+      clearWindowActive();
+      b.classList.add("active");
+      showCustom(isoDaysAgo(+b.dataset.days), isoDaysAgo(0));
+      return;
+    }
     const key = CHIP_KEY(b);
     if (!key) return;
     clearWindowActive();
@@ -567,7 +577,7 @@ document.querySelectorAll("#chips .chip[data-days], #chips .chip[data-day-offset
 $("#goN").addEventListener("click", () => {
   const n = Math.max(1, +$("#ndays").value || 7);
   clearWindowActive();
-  showCustom(isoDaysAgo(n), isoDaysAgo(1));
+  showCustom(isoDaysAgo(n), incEnd());
 });
 $("#goRange").addEventListener("click", () => {
   if ($("#d0").value && $("#d1").value) {
@@ -581,6 +591,21 @@ $("#goRange").addEventListener("click", () => {
   sortMode = b.dataset.sort; render();
 }));
 
+// "+ today" toggle: windows also count today's partial data
+function applyTodayToggle() {
+  const b = document.getElementById("todayTgl");
+  if (b) b.classList.toggle("active", incToday);
+}
+document.getElementById("todayTgl").addEventListener("click", () => {
+  incToday = !incToday;
+  try { localStorage.setItem("incToday", incToday ? "1" : "0"); } catch (e) {}
+  applyTodayToggle();
+  const active = document.querySelector("#chips .chip.active[data-days]");
+  if (incToday) showCustom(isoDaysAgo(active ? +active.dataset.days : 7), isoDaysAgo(0));
+  else fetchSummary(active ? CHIP_KEY(active) : "last7");
+});
+applyTodayToggle();
+
 // ---- program events: readable chips that set the window ----
 const TL = { events: [], anchor: null };
 function loadEvents() { TL.events = (BUNDLE && BUNDLE.events) || []; }
@@ -589,7 +614,7 @@ function tlApply(s, e) {
   showCustom(s, e);
 }
 function tlPick(iso) {
-  const yd = isoDaysAgo(1);
+  const yd = incEnd();
   const mark = list => document.querySelectorAll(".evchip").forEach(x => x.classList.toggle("active", list.includes(x.dataset.iso)));
   if (TL.anchor && TL.anchor !== iso) {
     const pair = [TL.anchor, iso];
@@ -787,12 +812,18 @@ function buildCustom(start, end, mode) {
     });
   } else {
     const gainsBy = C.creators.map(() => []);
-    const exactOk = C.snap_first && start >= C.snap_first && end < C.snap_last;
+    const liveClose = C.snap_first && start >= C.snap_first && end >= C.snap_last && end >= todayIso;
+    const exactOk = C.snap_first && start >= C.snap_first && (end < C.snap_last || liveClose);
     if (exactOk) {
       exact = true;
-      gainsLabel = start + " \u2192 " + isoAdd(end, 1) + " snapshots";
+      gainsLabel = start + " \u2192 " + (liveClose ? "live crawl" : isoAdd(end, 1) + " snapshots");
       const per = new Map();
       winDays.forEach(d => { const g = C.daygains[d]; if (g) for (const k in g) { const i = +k; per.set(i, (per.get(i) || 0) + g[k]); } });
+      if (liveClose) C.videos.forEach((v, i) => {
+        const sv = (v.sv != null) ? v.sv : (((v.u || "") >= C.snap_last) ? 0 : v.v);
+        const g = v.v - sv;
+        if (g > 0) per.set(i, (per.get(i) || 0) + g);
+      });
       per.forEach((g, i) => { if (g > 0) gainsBy[C.videos[i].c].push([g, C.videos[i].v, i]); });
     } else {
       const span = n <= 1 ? "i1" : n <= 7 ? "i7" : n <= 14 ? "i14" : "i30";

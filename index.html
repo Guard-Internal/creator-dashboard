@@ -122,11 +122,15 @@ h1 { font-size: 21px; margin: 0; letter-spacing: -0.01em; }
 .pay.none { color: var(--muted); font-weight: 500; cursor: default; border-bottom: none; }
 .pay.good { color: var(--up); }
 .pay.bad { color: var(--down); }
-.paypanel { margin: 7px 0 2px; padding: 7px 11px; background: var(--card2); border-radius: 7px; font-size: 12px; }
-.paypanel .pr { display: flex; justify-content: space-between; gap: 10px; margin: 2.5px 0; color: var(--ink2); }
-.paypanel .pr .val { font-variant-numeric: tabular-nums; font-weight: 600; }
+.paypanel, .loompanel { margin: 7px 0 2px; padding: 7px 11px; background: var(--card2); border-radius: 7px; font-size: 12px; }
+.paypanel .pr, .loompanel .pr { display: flex; justify-content: space-between; gap: 10px; margin: 2.5px 0; color: var(--ink2); }
+.paypanel .pr .val, .loompanel .pr .val { font-variant-numeric: tabular-nums; font-weight: 600; }
+.loompanel .pr a { color: var(--accent); text-decoration: none; }
+.loompanel .pr a:hover { text-decoration: underline; }
+.loomchip { font-size: 11px; font-weight: 600; color: var(--ink2); cursor: pointer; border-bottom: 1px dotted var(--ring); }
+.loomchip:hover { color: var(--accent); }
 .paypanel .pr b { color: var(--ink); }
-.paypanel .muted { color: var(--muted); font-size: 11px; margin-top: 4px; }
+.paypanel .muted, .loompanel .muted { color: var(--muted); font-size: 11px; margin-top: 4px; }
 .tv.pad .g, .tv.pad .cap { color: var(--muted); }
 .tv.pad .g { font-weight: 600; }
 .tv .dt { font-size: 10.5px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -329,6 +333,10 @@ function render() {
     const pay = c.paid != null
       ? `<span class="pay${payCls}" title="click for earnings breakdown">${DATA.paid_label} pay $${Math.round(c.paid).toLocaleString()}</span>`
       : `<span class="pay none">${DATA.paid_label} pay —</span>`;
+    const looms = c.looms || [];
+    const loomChip = looms.length
+      ? `<span class="loomchip" title="${looms.length} Loom review${looms.length > 1 ? "s" : ""} · last ${looms[looms.length - 1].d} · click for the log">🎥 ${looms.length}</span>`
+      : "";
     const isCohort = DATA.mode === "new";
     const top = c.top.length ? c.top.map(v => {
       const cap = v.l ? `<a href="${v.l}" target="_blank" rel="noopener" title="posted ${v.u} · total ${fmt(v.v)}">${(v.t || "(no caption)").replace(/</g, "&lt;")}</a>`
@@ -342,8 +350,9 @@ function render() {
     const marks = [c.fresh ? "new creator (<60 days)" : "", c.plan ? "on the Next-30 plan" : "", c.ic ? "Inner Circle (10M+ lifetime views)" : ""].filter(Boolean).join(" · ");
     return `<div class="card${c.term ? " terminated" : ""}${c.fresh ? " fresh" : ""}${c.plan ? " onplan" : ""}${c.ic ? " ic" : ""}"${marks ? ` title="${marks}"` : ""}>
       <h2><span><span class="rank">#${i + 1}</span>${c.name}${c.term ? '<span class="termchip">TERMINATED</span>' : ""}</span><span class="delta ${dcls}" title="vs previous equal window">${dtxt}</span></h2>
-      <div class="sub">${links}${pay}</div>
+      <div class="sub">${links}${loomChip}${pay}</div>
       <div class="paypanel" hidden></div>
+      <div class="loompanel" hidden></div>
       <div class="big">${fmt(c.total)}${nposts}</div>
       ${(() => { const pl = c.plat || [0, 0, 0]; const ps = pl[0] + pl[1] + pl[2];
         return ps > 0 ? `<div class="psplit">` +
@@ -381,8 +390,9 @@ function postChart(days, dates) {
 $("#grid").addEventListener("click", e => {
   const np = e.target.closest(".nposts");
   const pay = e.target.closest(".pay");
+  const lm = e.target.closest(".loomchip");
   const card = e.target.closest(".card");
-  if (!card || (!np && !pay)) return;
+  if (!card || (!np && !pay && !lm)) return;
   const i = +card.querySelector(".sparkwrap").dataset.i;
   const c = RENDERED[i];
   if (np) {
@@ -391,6 +401,14 @@ $("#grid").addEventListener("click", e => {
     panel.dataset.i = i;
     panel.hidden = false;
     panel.innerHTML = postChart(c.posts_days || [], DATA.days || []);
+  } else if (lm) {
+    const panel = card.querySelector(".loompanel");
+    if (!panel.hidden) { panel.hidden = true; return; }
+    const ls = c.looms || [];
+    panel.innerHTML = ls.map(l =>
+      `<div class="pr"><span>${l.d}</span><a class="val" href="${l.url}" target="_blank" rel="noopener">watch the Loom →</a></div>`).join("")
+      + `<div class="muted">${ls.length} Loom review${ls.length > 1 ? "s" : ""} sent</div>`;
+    panel.hidden = false;
   } else if (pay && !pay.classList.contains("none")) {
     const panel = card.querySelector(".paypanel");
     if (!panel.hidden) { panel.hidden = true; return; }
@@ -731,7 +749,7 @@ function cardShell(cr, total, prev, daily, top, winDays, plat) {
   const pf = postsFor(cr.key, winDays);
   return { key: cr.key, name: cr.name, total, prev, days: daily, top,
            posts: pf.agg, posts_days: pf.days, term: cr.term,
-           plan: cr.plan, ic: cr.ic, fresh: cr.fresh,
+           plan: cr.plan, ic: cr.ic, fresh: cr.fresh, looms: cr.looms,
            plat: (plat || [0, 0, 0]).map(Math.round),
            links: cr.links || {}, paid: cr.paid, paid_detail: cr.paid_detail };
 }

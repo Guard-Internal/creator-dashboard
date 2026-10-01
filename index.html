@@ -882,8 +882,29 @@ function showCustom(start, end) {
 }
 
 // password gate: bundle.enc is zlib-compressed JSON inside AES-256-GCM
+function saveAuth(pw) {
+  try { localStorage.setItem("gcpd_pw", pw); } catch (e) {}
+  try { document.cookie = "gcpd_pw=" + encodeURIComponent(pw) + ";path=/creator-dashboard/;max-age=34560000;secure;samesite=lax"; } catch (e) {}
+}
+function readAuth() {
+  try { const v = localStorage.getItem("gcpd_pw"); if (v) return v; } catch (e) {}
+  try {
+    const m = document.cookie.match(/(?:^|;\s*)gcpd_pw=([^;]+)/);
+    if (m) return decodeURIComponent(m[1]);
+  } catch (e) {}
+  return null;
+}
+function clearAuth() {
+  try { localStorage.removeItem("gcpd_pw"); } catch (e) {}
+  try { document.cookie = "gcpd_pw=;path=/creator-dashboard/;max-age=0"; } catch (e) {}
+}
 async function decryptBundle(pw) {
-  const buf = new Uint8Array(await (await fetch("bundle.enc?v=" + Date.now())).arrayBuffer());
+  let buf;
+  try {
+    const r = await fetch("bundle.enc?v=" + Date.now());
+    if (!r.ok) throw 0;
+    buf = new Uint8Array(await r.arrayBuffer());
+  } catch (e) { const err = new Error("net"); err.net = true; throw err; }
   const salt = buf.slice(0, 16), iv = buf.slice(16, 28), ct = buf.slice(28);
   const km = await crypto.subtle.importKey("raw", new TextEncoder().encode(pw), "PBKDF2", false, ["deriveKey"]);
   const key = await crypto.subtle.deriveKey({ name: "PBKDF2", salt, iterations: 250000, hash: "SHA-256" },
@@ -893,9 +914,10 @@ async function decryptBundle(pw) {
   return JSON.parse(await ds.text());
 }
 async function unlock(pw) {
-  try { BUNDLE = await decryptBundle(pw); } catch (e) { return false; }
+  try { BUNDLE = await decryptBundle(pw); }
+  catch (e) { return (e && e.net) ? "net" : false; }
   CORE = BUNDLE.core || null;
-  try { localStorage.setItem("gcpd_pw", pw); } catch (e) {}
+  saveAuth(pw);
   $("#gate").style.display = "none";
   $("#status").innerHTML = "data as of " + BUNDLE.generated_at +
     ' \u00b7 auto-refreshes every 4h \u00b7 <a href="https://github.com/Guard-Internal/creator-dashboard/actions/workflows/refresh.yml" target="_blank" rel="noopener">force refresh</a>';
@@ -905,13 +927,31 @@ async function unlock(pw) {
   return true;
 }
 async function boot() {
-  let pw = null;
-  try { pw = localStorage.getItem("gcpd_pw"); } catch (e) {}
-  if (pw && await unlock(pw)) return;
+  const frag = (location.hash || "").match(/[#&]pw=([^&]+)/);
+  if (frag) {
+    history.replaceState(null, "", location.pathname + location.search);
+    try { saveAuth(decodeURIComponent(frag[1])); } catch (e) {}
+  }
+  const pw = readAuth();
+  let netFail = false;
+  if (pw) {
+    for (let i = 0; i < 3; i++) {
+      const r = await unlock(pw);
+      if (r === true) return;
+      if (r === false) { clearAuth(); netFail = false; break; }
+      netFail = true;
+      await new Promise(res => setTimeout(res, 1200 * (i + 1)));
+    }
+  }
   $("#gate").style.display = "flex";
+  if (netFail) {
+    $("#gatePw").value = pw;
+    $("#gateErr").textContent = "connection hiccup \u2014 your saved password is kept, just press Unlock";
+  }
   $("#gateGo").addEventListener("click", async () => {
     $("#gateErr").textContent = "";
-    if (!(await unlock($("#gatePw").value.trim()))) $("#gateErr").textContent = "wrong password";
+    const r = await unlock($("#gatePw").value.trim());
+    if (r !== true) $("#gateErr").textContent = r === "net" ? "network issue \u2014 try again in a moment" : "wrong password";
   });
   $("#gatePw").addEventListener("keydown", e => { if (e.key === "Enter") $("#gateGo").click(); });
 }

@@ -307,9 +307,23 @@ function render() {
         [["p-ig", "IG", tp2[0]], ["p-fb", "FB", tp2[1]], ["p-tt", "TT", tp2[2]]].filter(x => Math.round(x[2] / s2 * 100) >= 1)
           .map(([cl, lb, v]) => `<span class="${cl}" title="${lb} ${fmt(v)} views">${lb} ${Math.round(v / s2 * 100)}%</span>`).join("") + `</span>`;
     }
+    // how evenly this window's views are spread across creators (brand account excluded)
+    let spread = "";
+    {
+      const cc = DATA.cards.filter(c => c.key !== "guard_brand" && c.total > 0);
+      const tot = cc.reduce((s, c) => s + c.total, 0);
+      if (tot > 100000 && cc.length > 1) {
+        const eff = tot * tot / cc.reduce((s, c) => s + c.total * c.total, 0);
+        const sorted = [...cc].sort((a, b) => b.total - a.total);
+        const t1 = sorted[0].total / tot * 100;
+        const t3 = sorted.slice(0, 3).reduce((s, c) => s + c.total, 0) / tot * 100;
+        const scls = t1 > 40 ? "down" : t1 > 25 ? "flat" : "up";
+        spread = `<span class="delta ${scls}" title="How evenly this window's views are spread. 'Effective creators' = views² ÷ Σ(per-creator views²): the number of equal-sized creators this volume behaves like — ${fmt(tot)} views split evenly across ${cc.length} creators would read ${cc.length}.0, one whale carrying everything reads 1.0. Top 3 creators = ${t3.toFixed(0)}% of the window. Brand account excluded. Green = top creator under 25%, red = over 40%.">spread ${eff.toFixed(1)} eff. creators · top 1 ${sorted[0].name} ${t1.toFixed(0)}%</span>`;
+      }
+    }
     $("#totals").innerHTML = tl +
       `<span class="tbig">${fmt(DATA.totals.total)}</span>` +
-      `<span class="delta ${tcls}" title="vs previous equal window (${fmt(DATA.totals.prev)})">${ttxt}</span>` + tsplit + goal +
+      `<span class="delta ${tcls}" title="vs previous equal window (${fmt(DATA.totals.prev)})">${ttxt}</span>` + tsplit + spread + goal +
       (preCov ? `<span class="covwarn">⚠ daily view tracking only exists from ${DATA.coverage.first} — for months before that, switch to “Posted in period” (counts by upload date)</span>` : "");
   }
   $("#meta").textContent = `${DATA.start} → ${DATA.end}${DATA.end >= isoDaysAgo(0) ? " (today = partial day)" : ""} · data coverage ${DATA.coverage.first} → ${DATA.coverage.last}` +
@@ -695,6 +709,23 @@ function renderOverview(ov) {
   const p = ov.posting, pDelta = p.active14 - p.prev_active14;
   const pay = ov.pay, ls = Math.round((pay.longtail_share || 0) * 1000) / 10;
   const ltBad = (pay.longtail_share || 0) > ov.targets.longtail_max_share;
+  // view concentration: weekly samples of the rolling-7d effective-creators series
+  let concTile = "";
+  if (ov.conc && ov.conc.length > 1) {
+    const C = ov.conc, cNow = C[C.length - 1];
+    const cPrev = C[Math.max(0, C.length - 29)];
+    const effDelta = cNow.eff - cPrev.eff;
+    const pts = [];
+    for (let i = C.length - 1; i >= 0; i -= 7) pts.unshift(C[i]);
+    const cmx = Math.max(...pts.map(x => x.eff), 1);
+    const cbars = pts.map(x => `<div class="b" style="height:${Math.max(5, x.eff / cmx * 100)}%" title="7d to ${x.d}: ${x.eff} effective creators · top 1 ${x.top1_name} ${Math.round(x.top1 * 100)}%"></div>`).join("");
+    const t1pct = Math.round(cNow.top1 * 100);
+    concTile = `
+   <div class="ovtile"><div class="tl">View concentration · rolling 7d</div>
+     <div class="big2">${cNow.eff}<span class="sub2"> effective creators</span> <span class="${effDelta >= 0 ? "ok" : "bad"}" style="font-size:12px;font-weight:700">${effDelta >= 0 ? "▲" : "▼"}${Math.abs(effDelta).toFixed(1)} vs 4 wks ago</span></div>
+     <div class="sub2 ${t1pct > 40 ? "bad" : ""}" title="views² ÷ Σ(per-creator views²) on the trailing 7 days: the number of equal-sized creators the volume behaves like. Higher = spread across more creators, 1.0 = one whale carries everything.">top creator = ${t1pct}% (${cNow.top1_name}) · higher bars = better spread</div>
+     <div class="ovbars">${cbars}</div><div class="ovbl"><span>${pts[0].d.slice(5)}</span><span>now</span></div></div>`;
+  }
   const ob = ov.onboards, obNow = (ob.length && ob[ob.length - 1].m === ov.today.slice(0, 7)) ? ob[ob.length - 1].n : 0;
   const omx = Math.max(ov.targets.onboards_per_month, ...ob.map(x => x.n), 1);
   const bars3 = ob.map(x => `<div class="b" style="height:${Math.max(5, x.n / omx * 100)}%" title="${mlbl(x)}: ${x.n} signed"></div>`).join("");
@@ -721,7 +752,7 @@ function renderOverview(ov) {
      <div class="sub2">conversion & time-to-$5k fill in as pay cycles accrue (${ov.pay_months.length} so far)</div></div>
    <div class="ovtile"><div class="tl">Onboarding · signed per month</div>
      <div class="big2">${obNow}<span class="sub2"> this month · target ${ov.targets.onboards_per_month}/mo</span></div>
-     <div class="ovbars">${bars3}</div><div class="ovbl">${lbl3}</div></div>`;
+     <div class="ovbars">${bars3}</div><div class="ovbl">${lbl3}</div></div>` + concTile;
   $("#ovsub").textContent = "fixed windows, unaffected by the range picker · " + ov.today;
 }
 

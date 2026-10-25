@@ -22,7 +22,7 @@ jobs:
       - name: Checkout engine (private)
         uses: actions/checkout@v4
         with:
-          repository: jurgismacys/guard-creator-performance-dashboard
+          repository: Guard-Internal/guard-creator-performance-dashboard
           ssh-key: ${{ secrets.CODE_DEPLOY_KEY }}
           path: engine
 
